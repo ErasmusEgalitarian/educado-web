@@ -1,104 +1,245 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Educado - Course Management</title>
+    <title>EDUCADO - Dashboard</title>
     <link rel="stylesheet" href="/src/styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Educado Course Management</h1>
-            <nav>
-                <button class="nav-btn active" data-view="courses">Courses</button>
-                <button class="nav-btn" data-view="create">Create Course</button>
-            </nav>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="logo">
+                        <img src="/images/logo_black240.png" alt="EDUCADO" class="logo-img">
+                        <span class="logo-text">EDUCADO</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="user-profile">
+                        <span class="user-name-header">Olá, User Name</span>
+                        <div class="user-avatar-header">UN</div>
+                    </div>
+                </div>
+            </div>
         </header>
 
-        <main>
-            <!-- Courses List View -->
-            <div id="courses-view" class="view active">
-                <h2>All Courses</h2>
-                <div id="courses-list" class="courses-grid">
-                    <!-- Courses will be loaded here -->
+        <div class="dashboard-layout">
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Courses View -->
+                <div id="courses-view" class="view active">
+                    <div class="content-header">
+                        <h2>Confira seus cursos</h2>
+                        <div class="header-actions">
+                            <button class="btn btn-primary" id="create-course-btn">+ Novo Curso</button>
+                        </div>
+                    </div>
+
+                    <div class="filters-bar">
+                        <div class="search-container">
+                            <input type="text" id="course-search" class="search-input" placeholder="Buscar Curso">
+                            <span class="search-icon">🔍</span>
+                        </div>
+                        <select id="filter-dropdown" class="filter-dropdown">
+                            <option value="recent">Último Incluido</option>
+                            <option value="oldest">Mais Antigo</option>
+                            <option value="name">Nome A-Z</option>
+                            <option value="category">Categoria</option>
+                        </select>
+                        <div class="view-toggle">
+                            <button class="view-toggle-btn active" data-view="grid" id="grid-view-btn" title="Grid View">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <rect x="2" y="2" width="5" height="5" stroke="currentColor" fill="none"/>
+                                    <rect x="9" y="2" width="5" height="5" stroke="currentColor" fill="none"/>
+                                    <rect x="2" y="9" width="5" height="5" stroke="currentColor" fill="none"/>
+                                    <rect x="9" y="9" width="5" height="5" stroke="currentColor" fill="none"/>
+                                </svg>
+                            </button>
+                            <button class="view-toggle-btn" data-view="table" id="table-view-btn" title="Table View">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <line x1="2" y1="3" x2="14" y2="3" stroke="currentColor" stroke-width="1.5"/>
+                                    <line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.5"/>
+                                    <line x1="2" y1="13" x2="14" y2="13" stroke="currentColor" stroke-width="1.5"/>
+                                    <line x1="5" y1="1" x2="5" y2="15" stroke="currentColor" stroke-width="1.5"/>
+                                    <line x1="10" y1="1" x2="10" y2="15" stroke="currentColor" stroke-width="1.5"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Grid View -->
+                    <div id="courses-grid-view" class="courses-container grid-view">
+                        <div id="courses-list" class="courses-grid">
+                            <!-- Courses will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Table View -->
+                    <div id="courses-table-view" class="courses-container table-view" style="display: none;">
+                        <table class="courses-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Categoria</th>
+                                    <th>Carga horária</th>
+                                    <th>Inscritos</th>
+                                    <th>Nota</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="courses-table-body">
+                                <!-- Table rows will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Course Detail View -->
-            <div id="course-detail-view" class="view">
-                <button class="btn btn-secondary" id="back-to-courses">← Back to Courses</button>
-                <div id="course-detail-content">
-                    <!-- Course detail and sections will be loaded here -->
+                <!-- Course Detail View -->
+                <div id="course-detail-view" class="view">
+                    <button class="btn btn-secondary" id="back-to-courses">← Voltar para Cursos</button>
+                    <div id="course-detail-content">
+                        <!-- Course detail and sections will be loaded here -->
+                    </div>
                 </div>
-            </div>
 
-            <!-- Create Course View -->
-            <div id="create-view" class="view">
-                <h2>Create New Course</h2>
-                <form id="course-form">
-                    <div class="form-group">
-                        <label for="course-id">Course ID:</label>
-                        <input type="text" id="course-id" name="id" required placeholder="e.g., intro-programming">
+                <!-- Create Course View -->
+                <div id="create-view" class="view">
+                    <div class="content-header">
+                        <h2>Criar Novo Curso</h2>
+                        <button class="btn btn-secondary" id="cancel-create">Cancelar</button>
                     </div>
-
-                    <div class="form-group">
-                        <label for="course-title">Title:</label>
-                        <input type="text" id="course-title" name="title" required placeholder="Introduction to Programming">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="course-short-desc">Short Description:</label>
-                        <input type="text" id="course-short-desc" name="shortDescription" required placeholder="Learn the basics of programming">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="course-desc">Full Description:</label>
-                        <textarea id="course-desc" name="description" required rows="4" placeholder="Detailed course description..."></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="course-image">Image URL:</label>
-                        <input type="url" id="course-image" name="imageUrl" required placeholder="https://example.com/image.jpg">
-                    </div>
-
-                    <div class="form-row">
+                    <form id="course-form">
                         <div class="form-group">
-                            <label for="course-difficulty">Difficulty:</label>
-                            <select id="course-difficulty" name="difficulty" required>
-                                <option value="beginner">Beginner</option>
-                                <option value="intermediate">Intermediate</option>
-                                <option value="advanced">Advanced</option>
-                            </select>
+                            <label for="course-id">ID do Curso:</label>
+                            <input type="text" id="course-id" name="id" required placeholder="ex: intro-programming">
                         </div>
 
                         <div class="form-group">
-                            <label for="course-time">Estimated Time:</label>
-                            <input type="text" id="course-time" name="estimatedTime" required placeholder="2 hours">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="course-category">Category:</label>
-                            <input type="text" id="course-category" name="category" required placeholder="Programming">
+                            <label for="course-title">Título:</label>
+                            <input type="text" id="course-title" name="title" required placeholder="Introdução à Programação">
                         </div>
 
                         <div class="form-group">
-                            <label for="course-threshold">Passing Threshold (%):</label>
-                            <input type="number" id="course-threshold" name="passingThreshold" min="0" max="100" value="75" required>
+                            <label for="course-short-desc">Descrição Curta:</label>
+                            <input type="text" id="course-short-desc" name="shortDescription" required placeholder="Aprenda o básico de programação">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="course-desc">Descrição Completa:</label>
+                            <textarea id="course-desc" name="description" required rows="4" placeholder="Descrição detalhada do curso..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="course-image">URL da Imagem:</label>
+                            <input type="url" id="course-image" name="imageUrl" required placeholder="https://exemplo.com/imagem.jpg">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="course-difficulty">Dificuldade:</label>
+                                <select id="course-difficulty" name="difficulty" required>
+                                    <option value="beginner">Iniciante</option>
+                                    <option value="intermediate">Intermediário</option>
+                                    <option value="advanced">Avançado</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="course-time">Tempo Estimado:</label>
+                                <input type="text" id="course-time" name="estimatedTime" required placeholder="2 horas">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="course-category">Categoria:</label>
+                                <input type="text" id="course-category" name="category" required placeholder="Programação">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="course-threshold">Limite de Aprovação (%):</label>
+                                <input type="number" id="course-threshold" name="passingThreshold" min="0" max="100" value="75" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="course-tags">Tags (separadas por vírgula):</label>
+                            <input type="text" id="course-tags" name="tags" placeholder="python, básico, iniciante">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Criar Curso</button>
+                    </form>
+                </div>
+            </main>
+
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-content">
+                    <div class="user-section">
+                        <div class="user-greeting">Olá, User Name</div>
+                    </div>
+
+                <div class="sidebar-section">
+                    <div class="section-header">
+                        <h3>Progressos</h3>
+                        <select id="progress-period" class="period-select">
+                            <option value="month">Esse mês</option>
+                            <option value="last-month">Mês passado</option>
+                            <option value="week">Últimos 7 dias</option>
+                            <option value="year">Este ano</option>
+                        </select>
+                    </div>
+
+                    <div class="stats-list">
+                        <div class="stat-item">
+                            <div class="stat-label">Total cursos</div>
+                            <div class="stat-row">
+                                <span class="stat-value" id="total-courses">8</span>
+                                <span class="stat-change positive" id="courses-change">▲ 5%</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total alunos</div>
+                            <div class="stat-row">
+                                <span class="stat-value" id="total-students">167</span>
+                                <span class="stat-change negative" id="students-change">▼ 5%</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total certificados emitidos</div>
+                            <div class="stat-row">
+                                <span class="stat-value" id="total-certificates">54</span>
+                                <span class="stat-change positive" id="certificates-change">▲ 5%</span>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="form-group">
-                        <label for="course-tags">Tags (comma-separated):</label>
-                        <input type="text" id="course-tags" name="tags" placeholder="python, basics, beginner-friendly">
+                <div class="sidebar-section">
+                    <h3 class="section-title">Avaliação</h3>
+                    <div class="rating-display">
+                        <span class="stars" id="rating-stars">★★★☆☆</span>
+                        <span class="rating-value" id="rating-value">3.7</span>
                     </div>
+                </div>
 
-                    <button type="submit" class="btn btn-primary">Create Course</button>
-                </form>
-            </div>
-        </main>
+                <div class="sidebar-section">
+                    <h3 class="section-title">Atividades</h3>
+                    <div class="activities-list" id="activities-list">
+                        <div class="activity-item">
+                            <p>Parabéns! Seu curso "Nome do curso" atingiu 100 inscritos</p>
+                        </div>
+                        <div class="activity-item">
+                            <p>Um aluno do curso "Nome do curso" deixou uma dúvida</p>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </aside>
+        </div>
     </div>
 
     <script type="module" src="/src/main.ts"></script>
