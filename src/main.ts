@@ -178,7 +178,7 @@ class CourseManager {
     try {
       const coursesList = document.getElementById('courses-list')
       const tableBody = document.getElementById('courses-table-body')
-      
+
       if (coursesList) {
         coursesList.innerHTML = '<div class="loading">Carregando cursos...</div>'
       }
@@ -192,7 +192,7 @@ class CourseManager {
     } catch (error) {
       const coursesList = document.getElementById('courses-list')
       const tableBody = document.getElementById('courses-table-body')
-      
+
       if (coursesList) {
         coursesList.innerHTML = `
           <div class="error">
@@ -278,22 +278,39 @@ class CourseManager {
     const stars = this.getStars(rating)
     const categoryName = course.category || 'Geral'
     const estimatedTime = course.estimatedTime || 'N/A'
-    
+
     // Get first letter of course title for icon
     const iconLetter = course.title.charAt(0).toUpperCase()
 
     return `
       <div class="course-card" data-course-id="${course.id}">
-        <div class="course-icon">${iconLetter}</div>
-        <h3>${course.title}</h3>
+        <div class="course-card-header">
+            <div class="course-icon-small">
+                <ion-icon name="bar-chart"></ion-icon>
+            </div>
+            <h3>${course.title}</h3>
+        </div>
+        
         <div class="course-meta">
-          <span>${categoryName}</span>
-          <span>${estimatedTime}</span>
+          <div class="meta-item">
+            <svg class="meta-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <span>${categoryName}</span>
+          </div>
+          <div class="meta-item">
+            <svg class="meta-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>${estimatedTime}</span>
+          </div>
         </div>
+
         <div class="course-rating">
-          <span class="stars">${stars}</span>
-          <span class="rating-number">${rating.toFixed(1)}</span>
+            <span class="stars">${stars}</span>
+            <span class="rating-number">${rating.toFixed(1)}</span>
         </div>
+
         <div class="course-actions">
           <button class="btn btn-edit edit-course-btn" data-course-id="${course.id}">Editar</button>
           <button class="btn btn-view view-course-btn" data-course-id="${course.id}">Visualizar</button>
@@ -330,7 +347,7 @@ class CourseManager {
     const fullStars = Math.floor(rating)
     const hasHalfStar = rating % 1 >= 0.5
     const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0)
-    
+
     return '★'.repeat(fullStars) + (hasHalfStar ? '☆' : '') + '☆'.repeat(emptyStars)
   }
 
