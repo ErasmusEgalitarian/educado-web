@@ -2,38 +2,87 @@ import { api } from './api'
 import { Course, CreateCourseInput } from './types'
 import { CourseEditor } from './course-editor'
 
+type ViewMode = 'grid' | 'table'
+type MainView = 'courses' | 'create' | 'detail'
+
 class CourseManager {
-  private currentView: 'courses' | 'create' | 'detail' = 'courses'
+  private currentView: MainView = 'courses'
+  private viewMode: ViewMode = 'grid'
   private courses: Course[] = []
+  private filteredCourses: Course[] = []
   private courseEditor: CourseEditor | null = null
+  private searchQuery: string = ''
+  private filterValue: string = 'recent'
 
   constructor() {
     this.init()
   }
 
   private init() {
-    this.setupNavigation()
+    this.setupEventListeners()
     this.setupForm()
     this.loadCourses()
+    this.updateSidebarStats()
   }
 
-  private setupNavigation() {
-    const navButtons = document.querySelectorAll('.nav-btn')
-    navButtons.forEach(button => {
-      button.addEventListener('click', (e) => {
-        const target = e.target as HTMLButtonElement
-        const view = target.dataset.view as 'courses' | 'create'
-        this.switchView(view)
-      })
+  private setupEventListeners() {
+    // Create course button
+    const createBtn = document.getElementById('create-course-btn')
+    createBtn?.addEventListener('click', () => this.switchView('create'))
+
+    // Cancel create button
+    const cancelBtn = document.getElementById('cancel-create')
+    cancelBtn?.addEventListener('click', () => this.switchView('courses'))
+
+    // Back to courses button
+    const backBtn = document.getElementById('back-to-courses')
+    backBtn?.addEventListener('click', () => this.switchView('courses'))
+
+    // View toggle buttons
+    const gridBtn = document.getElementById('grid-view-btn')
+    const tableBtn = document.getElementById('table-view-btn')
+    gridBtn?.addEventListener('click', () => this.setViewMode('grid'))
+    tableBtn?.addEventListener('click', () => this.setViewMode('table'))
+
+    // Search input
+    const searchInput = document.getElementById('course-search') as HTMLInputElement
+    searchInput?.addEventListener('input', (e) => {
+      this.searchQuery = (e.target as HTMLInputElement).value.toLowerCase()
+      this.applyFilters()
+    })
+
+    // Filter dropdown
+    const filterDropdown = document.getElementById('filter-dropdown') as HTMLSelectElement
+    filterDropdown?.addEventListener('change', (e) => {
+      this.filterValue = (e.target as HTMLSelectElement).value
+      this.applyFilters()
     })
   }
 
-  private switchView(view: 'courses' | 'create') {
+  private setViewMode(mode: ViewMode) {
+    this.viewMode = mode
+
+    const gridBtn = document.getElementById('grid-view-btn')
+    const tableBtn = document.getElementById('table-view-btn')
+    const gridView = document.getElementById('courses-grid-view')
+    const tableView = document.getElementById('courses-table-view')
+
+    gridBtn?.classList.toggle('active', mode === 'grid')
+    tableBtn?.classList.toggle('active', mode === 'table')
+
+    if (mode === 'grid') {
+      gridView?.style.setProperty('display', 'block')
+      tableView?.style.setProperty('display', 'none')
+    } else {
+      gridView?.style.setProperty('display', 'none')
+      tableView?.style.setProperty('display', 'block')
+    }
+
+    this.renderCourses()
+  }
+
+  private switchView(view: MainView) {
     this.currentView = view
-
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.getAttribute('data-view') === view)
-    })
 
     document.querySelectorAll('.view').forEach(v => {
       v.classList.toggle('active', v.id === `${view}-view`)
@@ -46,7 +95,7 @@ class CourseManager {
 
   private setupForm() {
     const form = document.getElementById('course-form') as HTMLFormElement
-    form.addEventListener('submit', async (e) => {
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault()
       await this.handleCreateCourse(form)
     })
@@ -69,84 +118,260 @@ class CourseManager {
     }
 
     try {
-      this.showMessage('Creating course...', 'loading')
+      this.showMessage('Criando curso...', 'loading')
 
       await api.createCourse(courseData)
 
-      this.showMessage('Course created successfully!', 'success')
+      this.showMessage('Curso criado com sucesso!', 'success')
       form.reset()
 
       setTimeout(() => {
         this.switchView('courses')
       }, 1500)
     } catch (error) {
-      this.showMessage('Error creating course. Please try again.', 'error')
+      this.showMessage('Erro ao criar curso. Tente novamente.', 'error')
       console.error('Error:', error)
     }
   }
 
-  private async loadCourses() {
-    const coursesList = document.getElementById('courses-list')
-    if (!coursesList) return
+  private applyFilters() {
+    let filtered = [...this.courses]
 
+    // Apply search filter
+    if (this.searchQuery) {
+      filtered = filtered.filter(course =>
+        course.title.toLowerCase().includes(this.searchQuery) ||
+        course.category.toLowerCase().includes(this.searchQuery) ||
+        course.shortDescription.toLowerCase().includes(this.searchQuery)
+      )
+    }
+
+    // Apply sort filter
+    switch (this.filterValue) {
+      case 'recent':
+        filtered.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return dateB - dateA
+        })
+        break
+      case 'oldest':
+        filtered.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return dateA - dateB
+        })
+        break
+      case 'name':
+        filtered.sort((a, b) => a.title.localeCompare(b.title))
+        break
+      case 'category':
+        filtered.sort((a, b) => a.category.localeCompare(b.category))
+        break
+    }
+
+    this.filteredCourses = filtered
+    this.renderCourses()
+  }
+
+  private async loadCourses() {
     try {
-      coursesList.innerHTML = '<div class="loading">Loading courses...</div>'
+      const coursesList = document.getElementById('courses-list')
+      const tableBody = document.getElementById('courses-table-body')
+      
+      if (coursesList) {
+        coursesList.innerHTML = '<div class="loading">Carregando cursos...</div>'
+      }
+      if (tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="6" class="loading">Carregando cursos...</td></tr>'
+      }
 
       this.courses = await api.getCourses()
-
-      if (this.courses.length === 0) {
+      this.applyFilters()
+      this.updateSidebarStats()
+    } catch (error) {
+      const coursesList = document.getElementById('courses-list')
+      const tableBody = document.getElementById('courses-table-body')
+      
+      if (coursesList) {
         coursesList.innerHTML = `
-          <div class="empty-state">
-            <h3>No courses yet</h3>
-            <p>Create your first course to get started!</p>
+          <div class="error">
+            Falha ao carregar cursos. Certifique-se de que o servidor da API está em execução.
           </div>
         `
-      } else {
-        coursesList.innerHTML = this.courses.map(course => this.createCourseCard(course)).join('')
-
-        // Add event listeners to edit buttons
-        document.querySelectorAll('.edit-course-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            const courseId = (e.target as HTMLElement).dataset.courseId
-            if (courseId) {
-              this.showCourseDetail(courseId)
-            }
-          })
-        })
       }
-    } catch (error) {
-      coursesList.innerHTML = `
-        <div class="error">
-          Failed to load courses. Please make sure the API server is running.
-        </div>
-      `
+      if (tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="6" class="error">Falha ao carregar cursos.</td></tr>'
+      }
       console.error('Error loading courses:', error)
     }
   }
 
+  private renderCourses() {
+    if (this.viewMode === 'grid') {
+      this.renderGridView()
+    } else {
+      this.renderTableView()
+    }
+  }
+
+  private renderGridView() {
+    const coursesList = document.getElementById('courses-list')
+    if (!coursesList) return
+
+    if (this.filteredCourses.length === 0) {
+      coursesList.innerHTML = `
+        <div class="empty-state">
+          <h3>Nenhum curso encontrado</h3>
+          <p>Crie seu primeiro curso para começar!</p>
+        </div>
+      `
+      return
+    }
+
+    coursesList.innerHTML = this.filteredCourses.map(course => this.createCourseCard(course)).join('')
+
+    // Add event listeners
+    document.querySelectorAll('.edit-course-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const courseId = (e.target as HTMLElement).dataset.courseId
+        if (courseId) {
+          this.showCourseDetail(courseId)
+        }
+      })
+    })
+
+    document.querySelectorAll('.view-course-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const courseId = (e.target as HTMLElement).dataset.courseId
+        if (courseId) {
+          this.showCourseDetail(courseId)
+        }
+      })
+    })
+  }
+
+  private renderTableView() {
+    const tableBody = document.getElementById('courses-table-body')
+    if (!tableBody) return
+
+    if (this.filteredCourses.length === 0) {
+      tableBody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhum curso encontrado</td></tr>'
+      return
+    }
+
+    tableBody.innerHTML = this.filteredCourses.map(course => this.createTableRow(course)).join('')
+
+    // Add event listeners
+    document.querySelectorAll('.edit-course-icon').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const courseId = (e.target as HTMLElement).dataset.courseId
+        if (courseId) {
+          this.showCourseDetail(courseId)
+        }
+      })
+    })
+  }
+
   private createCourseCard(course: Course): string {
+    const rating = course.rating || 3.7
+    const stars = this.getStars(rating)
+    const categoryName = course.category || 'Geral'
+    const estimatedTime = course.estimatedTime || 'N/A'
+    
+    // Get first letter of course title for icon
+    const iconLetter = course.title.charAt(0).toUpperCase()
+
     return `
       <div class="course-card" data-course-id="${course.id}">
+        <div class="course-icon">${iconLetter}</div>
         <h3>${course.title}</h3>
-        <p>${course.shortDescription}</p>
         <div class="course-meta">
-          <span class="badge badge-${course.difficulty}">${course.difficulty}</span>
-          <span>${course.estimatedTime}</span>
+          <span>${categoryName}</span>
+          <span>${estimatedTime}</span>
         </div>
-        <div class="course-meta">
-          <span>Category: ${course.category}</span>
-          <span>Threshold: ${course.passingThreshold}%</span>
+        <div class="course-rating">
+          <span class="stars">${stars}</span>
+          <span class="rating-number">${rating.toFixed(1)}</span>
         </div>
-        ${course.tags.length > 0 ? `
-          <div style="margin-top: 10px;">
-            ${course.tags.map(tag => `<span style="display: inline-block; margin-right: 5px; padding: 2px 8px; background: #f0f0f0; border-radius: 3px; font-size: 12px;">${tag}</span>`).join('')}
-          </div>
-        ` : ''}
-        <div style="margin-top: 15px;">
-          <button class="btn btn-primary edit-course-btn" data-course-id="${course.id}">Edit Sections</button>
+        <div class="course-actions">
+          <button class="btn btn-edit edit-course-btn" data-course-id="${course.id}">Editar</button>
+          <button class="btn btn-view view-course-btn" data-course-id="${course.id}">Visualizar</button>
         </div>
       </div>
     `
+  }
+
+  private createTableRow(course: Course): string {
+    const rating = course.rating || 3.7
+    const stars = this.getStars(rating)
+    const categoryName = course.category || 'Geral'
+    const estimatedTime = course.estimatedTime || 'N/A'
+    // Mock enrolled count - in real app, this would come from API
+    const enrolledCount = Math.floor(Math.random() * 200) + 50
+
+    return `
+      <tr>
+        <td>${course.title}</td>
+        <td>${categoryName}</td>
+        <td>${estimatedTime}</td>
+        <td>${enrolledCount} alunos</td>
+        <td>${stars} ${rating.toFixed(1)}</td>
+        <td>
+          <button class="btn-icon edit-course-icon" data-course-id="${course.id}" title="Editar">
+            ✏️
+          </button>
+        </td>
+      </tr>
+    `
+  }
+
+  private getStars(rating: number): string {
+    const fullStars = Math.floor(rating)
+    const hasHalfStar = rating % 1 >= 0.5
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0)
+    
+    return '★'.repeat(fullStars) + (hasHalfStar ? '☆' : '') + '☆'.repeat(emptyStars)
+  }
+
+  private updateSidebarStats() {
+    const totalCourses = this.courses.length
+    const totalStudents = totalCourses * 20 // Mock calculation
+    const totalCertificates = Math.floor(totalCourses * 6.75) // Mock calculation
+    const avgRating = this.courses.length > 0
+      ? this.courses.reduce((sum, c) => sum + (c.rating || 3.7), 0) / this.courses.length
+      : 3.7
+
+    // Update stats
+    const totalCoursesEl = document.getElementById('total-courses')
+    const totalStudentsEl = document.getElementById('total-students')
+    const totalCertificatesEl = document.getElementById('total-certificates')
+    const ratingStarsEl = document.getElementById('rating-stars')
+    const ratingValueEl = document.getElementById('rating-value')
+
+    if (totalCoursesEl) totalCoursesEl.textContent = totalCourses.toString()
+    if (totalStudentsEl) totalStudentsEl.textContent = totalStudents.toString()
+    if (totalCertificatesEl) totalCertificatesEl.textContent = totalCertificates.toString()
+    if (ratingStarsEl) ratingStarsEl.textContent = this.getStars(avgRating)
+    if (ratingValueEl) ratingValueEl.textContent = avgRating.toFixed(1)
+
+    // Update change indicators (mock data)
+    const coursesChangeEl = document.getElementById('courses-change')
+    const studentsChangeEl = document.getElementById('students-change')
+    const certificatesChangeEl = document.getElementById('certificates-change')
+
+    if (coursesChangeEl) {
+      coursesChangeEl.textContent = '▲ 5%'
+      coursesChangeEl.className = 'stat-change positive'
+    }
+    if (studentsChangeEl) {
+      studentsChangeEl.textContent = '▼ 5%'
+      studentsChangeEl.className = 'stat-change negative'
+    }
+    if (certificatesChangeEl) {
+      certificatesChangeEl.textContent = '▲ 5%'
+      certificatesChangeEl.className = 'stat-change positive'
+    }
   }
 
   private async showCourseDetail(courseId: string) {
@@ -164,8 +389,10 @@ class CourseManager {
           const course = await api.getCourse(courseId)
 
           contentContainer.innerHTML = `
-            <h2>${course.title}</h2>
-            <p>${course.description}</p>
+            <div class="course-detail-header">
+              <h2>${course.title}</h2>
+              <p class="course-description">${course.description}</p>
+            </div>
             <div id="course-editor-container"></div>
           `
 
@@ -176,16 +403,10 @@ class CourseManager {
             await this.courseEditor.loadCourse(courseId)
           }
         } catch (error) {
-          contentContainer.innerHTML = '<div class="error">Failed to load course details</div>'
+          contentContainer.innerHTML = '<div class="error">Falha ao carregar detalhes do curso</div>'
           console.error('Error loading course:', error)
         }
       }
-    }
-
-    // Setup back button
-    const backBtn = document.getElementById('back-to-courses')
-    if (backBtn) {
-      backBtn.onclick = () => this.switchView('courses')
     }
   }
 
@@ -203,9 +424,10 @@ class CourseManager {
       top: 20px;
       right: 20px;
       padding: 15px 20px;
-      border-radius: 6px;
+      border-radius: 8px;
       z-index: 1000;
       animation: slideIn 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     `
 
     if (type === 'success') {
