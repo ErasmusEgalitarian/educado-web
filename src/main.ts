@@ -6,7 +6,6 @@ type ViewMode = 'grid' | 'table'
 type MainView = 'courses' | 'create' | 'detail'
 
 class CourseManager {
-  private currentView: MainView = 'courses'
   private viewMode: ViewMode = 'grid'
   private courses: Course[] = []
   private filteredCourses: Course[] = []
@@ -82,7 +81,6 @@ class CourseManager {
   }
 
   private switchView(view: MainView) {
-    this.currentView = view
 
     document.querySelectorAll('.view').forEach(v => {
       v.classList.toggle('active', v.id === `${view}-view`)
@@ -92,7 +90,6 @@ class CourseManager {
       this.loadCourses()
     }
   }
-
   private setupForm() {
     const form = document.getElementById('course-form') as HTMLFormElement
     form?.addEventListener('submit', async (e) => {
@@ -286,7 +283,7 @@ class CourseManager {
       <div class="course-card" data-course-id="${course.id}">
         <div class="course-card-header">
             <div class="course-icon-small">
-                <ion-icon name="bar-chart"></ion-icon>
+                ${iconLetter}
             </div>
             <h3>${course.title}</h3>
         </div>
