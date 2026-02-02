@@ -587,10 +587,6 @@ body {
     gap: 20px;
 }
 
-.stat-item {
-    /* No background, clean list style */
-}
-
 .stat-label {
     font-size: 14px;
     color: #6b7280;

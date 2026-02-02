@@ -1,5 +1,3 @@
-import { api } from './api'
-import { Course } from './types'
 
 export interface Section {
   id: string
@@ -29,7 +27,6 @@ export interface Activity {
 export class CourseEditor {
   private courseId: string | null = null
   private sections: Section[] = []
-  private currentSection: Section | null = null
 
   constructor(private container: HTMLElement) {}
 
