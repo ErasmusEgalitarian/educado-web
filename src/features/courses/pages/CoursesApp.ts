@@ -2,6 +2,7 @@ import { coursesApi } from '@/features/courses/api/courses.api'
 import type { Course, CreateCourseInput } from '@/features/courses/model/course.types'
 import { CourseEditor } from '@/features/courses/editor'
 import { toast } from '@/shared/ui/toast'
+import { getCurrentUser } from '@/shared/api/auth-session'
 
 type ViewMode = 'grid' | 'table'
 type MainView = 'courses' | 'create' | 'detail'
@@ -84,7 +85,6 @@ class CoursesApp {
     const formData = new FormData(form)
 
     const courseData: CreateCourseInput = {
-      id: formData.get('id') as string,
       title: formData.get('title') as string,
       shortDescription: formData.get('shortDescription') as string,
       description: formData.get('description') as string,
@@ -142,11 +142,15 @@ class CoursesApp {
     try {
       const coursesList = document.getElementById('courses-list')
       const tableBody = document.getElementById('courses-table-body')
+      const currentUser = getCurrentUser()
+      const isAdmin = currentUser?.role === 'ADMIN'
 
       if (coursesList) coursesList.innerHTML = '<div class="loading">Carregando cursos...</div>'
       if (tableBody) tableBody.innerHTML = '<tr><td colspan="6" class="loading">Carregando cursos...</td></tr>'
 
-      this.courses = await coursesApi.getCourses()
+      this.courses = isAdmin
+        ? await coursesApi.getCourses({ status: 'all' })
+        : await coursesApi.getMyCourses({ status: 'all' })
       this.applyFilters()
       this.updateSidebarStats()
     } catch (error) {

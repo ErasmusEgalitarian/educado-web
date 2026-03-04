@@ -5,6 +5,7 @@ import { AuthLoginCard } from '../components/AuthLoginCard'
 import { routes } from '@/app/routes'
 
 type AuthFlowStep = 'auth' | 'profile' | 'login'
+type UserRole = 'USER' | 'ADMIN'
 
 export function renderAuthLanding(container: HTMLElement) {
   let currentStep: AuthFlowStep = 'auth'
@@ -12,8 +13,9 @@ export function renderAuthLanding(container: HTMLElement) {
   let shouldOpenRegisterAfterRender = false
   let showPendingApprovalOnLogin = false
 
-  const redirectToHome = () => {
-    window.location.assign(routes.home)
+  const redirectToHome = (role: UserRole) => {
+    const destination = role === 'ADMIN' ? routes.adminHome : routes.home
+    window.location.assign(destination)
   }
 
   const openRegisterScreen = () => {
@@ -63,7 +65,7 @@ export function renderAuthLanding(container: HTMLElement) {
           render()
         },
         onOpenRegister: () => openRegisterScreen(),
-        onLoginSuccess: () => redirectToHome(),
+        onLoginSuccess: (role) => redirectToHome(role),
         showPendingApprovalModal: showPendingApprovalOnLogin,
         onPendingApprovalModalClose: () => {
           showPendingApprovalOnLogin = false

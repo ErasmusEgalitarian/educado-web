@@ -9,8 +9,5 @@ export function toast(message: string, type: ToastType) {
   messageDiv.textContent = message
 
   document.body.appendChild(messageDiv)
-
-  if (type !== 'loading') {
-    setTimeout(() => messageDiv.remove(), 3000)
-  }
+  setTimeout(() => messageDiv.remove(), 3000)
 }
