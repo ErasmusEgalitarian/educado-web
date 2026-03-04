@@ -3,10 +3,12 @@ import { ApiError } from '@/shared/api/http'
 import { subscribeLanguage, t } from '@/shared/i18n'
 import { toast } from '@/shared/ui/toast'
 
+type UserRole = 'USER' | 'ADMIN'
+
 interface AuthLoginCardOptions {
   onBack: () => void
   onOpenRegister: () => void
-  onLoginSuccess: () => void
+  onLoginSuccess: (role: UserRole) => void
   showPendingApprovalModal?: boolean
   onPendingApprovalModalClose?: () => void
 }
@@ -223,7 +225,7 @@ export function AuthLoginCard(container: HTMLElement, options: AuthLoginCardOpti
 
         if (response.user.status === 'APPROVED') {
           toast(t('auth.login.feedback.success'), 'success')
-          options.onLoginSuccess()
+          options.onLoginSuccess(response.user.role)
           return
         }
 

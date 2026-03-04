@@ -13,16 +13,21 @@ export function mountLanguageSwitcher(container: HTMLElement) {
         </select>
       </label>
     `
-
-    const selectElement = container.querySelector('#language-select') as HTMLSelectElement | null
-    selectElement?.addEventListener('change', (event) => {
-      const selectedLanguage = (event.target as HTMLSelectElement).value as Language
-      if (selectedLanguage === 'pt-BR' || selectedLanguage === 'en-US') {
-        setLanguage(selectedLanguage)
-      }
-    })
   }
 
-  render()
+  // Subscribe to language changes but keep it local
+  // (not stored - language switcher updates itself when language changes)
   subscribeLanguage(() => render())
+  
+  container.addEventListener('change', (event) => {
+    const selectElement = event.target as HTMLSelectElement
+    if (selectElement.id !== 'language-select') return
+
+    const selectedLanguage = selectElement.value as Language
+    if (selectedLanguage === 'pt-BR' || selectedLanguage === 'en-US') {
+      setLanguage(selectedLanguage)
+    }
+  })
+
+  render()
 }

@@ -1,5 +1,5 @@
 import { api } from '@/shared/api/http'
-import { setAccessToken } from '@/shared/api/auth-session'
+import { setAccessToken, setCurrentUser } from '@/shared/api/auth-session'
 
 export type RegistrationStatus = 'DRAFT_PROFILE' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED'
 
@@ -72,6 +72,7 @@ export const authApi = {
   login: async (payload: LoginInput) => {
     const response = await api.post<LoginResponse>('/auth/login', payload)
     setAccessToken(response.accessToken)
+    setCurrentUser(response.user)
     return response
   },
 
