@@ -3,8 +3,8 @@ export interface Section {
   id: string
   courseId: string
   title: string
-  videoUrl?: string | null
-  thumbnailUrl?: string | null
+  videoMediaId?: string | null
+  thumbnailMediaId?: string | null
   duration?: number | null
   order: number
   activities?: Activity[]
@@ -18,7 +18,7 @@ export interface Activity {
   pauseTimestamp?: number | null
   textPages?: string[] | null
   question?: string | null
-  imageUrl?: string | null
+  imageMediaId?: string | null
   options?: string[] | null
   correctAnswer?: number | boolean | null
   icon?: string | null
@@ -89,7 +89,7 @@ export class CourseEditor {
               <button class="btn-icon delete-section" data-id="${section.id}">Delete</button>
             </div>
           </div>
-          ${section.videoUrl ? `<p class="section-meta">Video: ${section.videoUrl}</p>` : ''}
+          ${section.videoMediaId ? `<p class="section-meta">Video: ${section.videoMediaId}</p>` : ''}
           ${section.activities && section.activities.length > 0 ? `
             <div class="activities-list">
               <h5>Activities:</h5>
@@ -244,8 +244,8 @@ export class CourseEditor {
       (document.getElementById('section-editor-title')! as HTMLElement).textContent = 'Edit Section';
       (document.getElementById('section-id')! as HTMLInputElement).value = section.id;
       (document.getElementById('section-title')! as HTMLInputElement).value = section.title;
-      (document.getElementById('section-video')! as HTMLInputElement).value = section.videoUrl || '';
-      (document.getElementById('section-thumbnail')! as HTMLInputElement).value = section.thumbnailUrl || '';
+      (document.getElementById('section-video')! as HTMLInputElement).value = section.videoMediaId || '';
+      (document.getElementById('section-thumbnail')! as HTMLInputElement).value = section.thumbnailMediaId || '';
       (document.getElementById('section-duration')! as HTMLInputElement).value = String(section.duration || '');
       (document.getElementById('section-order')! as HTMLInputElement).value = String(section.order);
     } else {
@@ -356,8 +356,8 @@ Page 2 content..."></textarea>
       id: id || `section-${Date.now()}`,
       courseId: this.courseId,
       title: (document.getElementById('section-title') as HTMLInputElement).value,
-      videoUrl: (document.getElementById('section-video') as HTMLInputElement).value || null,
-      thumbnailUrl: (document.getElementById('section-thumbnail') as HTMLInputElement).value || null,
+      videoMediaId: (document.getElementById('section-video') as HTMLInputElement).value || null,
+      thumbnailMediaId: (document.getElementById('section-thumbnail') as HTMLInputElement).value || null,
       duration: parseInt((document.getElementById('section-duration') as HTMLInputElement).value) || null,
       order: parseInt((document.getElementById('section-order') as HTMLInputElement).value)
     }

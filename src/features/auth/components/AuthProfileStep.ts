@@ -7,6 +7,7 @@ import monthSelectPlugin from 'flatpickr/dist/plugins/monthSelect'
 import { Portuguese } from 'flatpickr/dist/l10n/pt'
 import 'flatpickr/dist/flatpickr.min.css'
 import 'flatpickr/dist/plugins/monthSelect/style.css'
+import '../styles/auth-profile.css'
 
 type ProfileSectionKey = 'motivations' | 'academicBackground' | 'professionalExperience'
 

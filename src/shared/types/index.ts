@@ -3,7 +3,7 @@ export interface Course {
   title: string
   description: string
   shortDescription: string
-  imageUrl: string
+    imageMediaId: string
   difficulty: 'beginner' | 'intermediate' | 'advanced'
   estimatedTime: string
   passingThreshold: number
@@ -19,7 +19,7 @@ export interface CreateCourseInput {
   title: string
   description: string
   shortDescription: string
-  imageUrl: string
+    imageMediaId: string
   difficulty: 'beginner' | 'intermediate' | 'advanced'
   estimatedTime: string
   passingThreshold: number

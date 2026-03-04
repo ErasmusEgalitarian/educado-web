@@ -44,7 +44,11 @@ async function tryParseJson(response: Response): Promise<unknown> {
 
 async function request<T>(path: string, options: RequestOptions): Promise<T> {
   const headers = new Headers(options.headers ?? {})
-  headers.set('Content-Type', 'application/json')
+  const isFormDataBody = options.body instanceof FormData
+
+  if (!isFormDataBody && options.body !== undefined && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
 
   if (options.auth) {
     const token = getAccessToken()
@@ -54,7 +58,12 @@ async function request<T>(path: string, options: RequestOptions): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body:
+      options.body === undefined
+        ? undefined
+        : isFormDataBody
+          ? (options.body as FormData)
+          : JSON.stringify(options.body),
   })
 
   if (!res.ok) {

@@ -3,6 +3,7 @@ import { AuthCard } from '../components/AuthCard'
 import { AuthProfileStep } from '../components/AuthProfileStep'
 import { AuthLoginCard } from '../components/AuthLoginCard'
 import { routes } from '@/app/routes'
+import '../styles/auth-page.css'
 
 type AuthFlowStep = 'auth' | 'profile' | 'login'
 type UserRole = 'USER' | 'ADMIN'
