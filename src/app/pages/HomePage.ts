@@ -4,8 +4,13 @@ import { sectionsApi } from '@/features/courses/api/sections.api'
 import { activitiesApi } from '@/features/courses/api/activities.api'
 import type { Activity, ActivityType, Course, CreateCourseInput, Tag } from '@/features/courses/model/course.types'
 import { tagsApi } from '@/features/courses/api/tags.api'
+import { mediaApi, type MediaResponse } from '@/features/media/api/media.api'
+import { ApiError } from '@/shared/api/http'
 import { toast } from '@/shared/ui/toast'
 import { getLanguage, t } from '@/shared/i18n'
+import { MediaTabs } from '@/features/media/components/MediaTabs'
+import { routes } from '@/app/routes'
+import '@/features/courses/styles/courses-home.css'
 
 type HomeUserRole = 'USER' | 'ADMIN'
 type CourseSort = 'recent' | 'oldest' | 'name'
@@ -13,6 +18,87 @@ const COURSE_HOME_VIEW_STORAGE_KEY = 'educado.courses.homeView'
 const COURSE_HOME_DRAFT_STORAGE_KEY = 'educado.courses.draft'
 const COURSE_HOME_FORM_DRAFT_STORAGE_KEY = 'educado.courses.formDraft'
 const COURSE_HOME_SECTIONS_LOCAL_STORAGE_KEY = 'educado.courses.sectionsLocal'
+const MEDIA_ID_REGEX = /^[a-f\d]{24}$/i
+
+type MediaErrorContext = 'course' | 'exercise'
+
+function isValidMediaIdFormat(mediaId: string) {
+  return MEDIA_ID_REGEX.test(mediaId)
+}
+
+function getMediaReferenceErrorMessage(error: unknown, context: MediaErrorContext) {
+  if (!(error instanceof ApiError)) return null
+
+  const keyPrefix = context === 'course' ? 'courses.newCourse.errors' : 'courses.sections.exerciseModal.errors'
+  const code = error.code ?? ''
+
+  if (code === 'VALIDATION_ERROR') {
+    return t(`${keyPrefix}.mediaValidation`)
+  }
+
+  if (code === 'INVALID_MEDIA_ID') {
+    return t(`${keyPrefix}.mediaInvalidId`)
+  }
+
+  if (code === 'MEDIA_NOT_FOUND') {
+    return t(`${keyPrefix}.mediaNotFound`)
+  }
+
+  if (code === 'MEDIA_INACTIVE') {
+    return t(`${keyPrefix}.mediaInactive`)
+  }
+
+  if (code === 'FORBIDDEN') {
+    return t(`${keyPrefix}.mediaForbidden`)
+  }
+
+  return null
+}
+
+function getMediaBankErrorMessage(error: unknown, operation: 'upload' | 'list') {
+  const listFallback = t('courses.home.mediaBank.upload.listError')
+  const uploadFallback = t('courses.home.mediaBank.upload.errors.generic')
+
+  if (!(error instanceof ApiError)) {
+    return operation === 'upload' ? uploadFallback : listFallback
+  }
+
+  if (error.status === 401) {
+    return t('courses.home.mediaBank.upload.errors.unauthorized')
+  }
+
+  const code = error.code ?? ''
+
+  if (code === 'VALIDATION_ERROR') {
+    return t('courses.home.mediaBank.upload.errors.validation')
+  }
+
+  if (code === 'INVALID_MEDIA_ID') {
+    return t('courses.home.mediaBank.upload.errors.invalidMediaId')
+  }
+
+  if (code === 'MEDIA_NOT_FOUND') {
+    return t('courses.home.mediaBank.upload.errors.mediaNotFound')
+  }
+
+  if (code === 'MEDIA_INACTIVE') {
+    return t('courses.home.mediaBank.upload.errors.mediaInactive')
+  }
+
+  if (code === 'FORBIDDEN') {
+    return t('courses.home.mediaBank.upload.errors.forbidden')
+  }
+
+  return operation === 'upload' ? uploadFallback : listFallback
+}
+
+function getMediaStreamUrl(mediaId: string) {
+  return `${import.meta.env.VITE_API_URL ?? 'http://localhost:5001'}/media/${mediaId}/stream`
+}
+
+function clearCourseTabsInHeader() {
+  document.querySelectorAll('.tabs-component').forEach((element) => element.remove())
+}
 
 export function renderHomePage(container: HTMLElement, role: HomeUserRole) {
   const currentView = sessionStorage.getItem(COURSE_HOME_VIEW_STORAGE_KEY)
@@ -39,6 +125,8 @@ export function renderHomePage(container: HTMLElement, role: HomeUserRole) {
 }
 
 function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
+  MediaTabs.renderInHeader('courses', role === 'ADMIN' ? routes.adminHome : routes.home)
+
   const currentUser = getCurrentUser()
   const displayName = currentUser ? `${currentUser.firstName} ${currentUser.lastName}`.trim() : 'User Name'
 
@@ -245,7 +333,7 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
     title,
     description: course.description,
     shortDescription: course.shortDescription,
-    imageUrl: course.imageUrl,
+    imageMediaId: course.imageMediaId,
     difficulty: course.difficulty,
     estimatedTime: course.estimatedTime,
     passingThreshold: course.passingThreshold,
@@ -273,7 +361,12 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
       await coursesApi.updateCourse(courseId, buildUpdatePayload(course, nextTitle))
       toast(t('courses.home.feedback.updateSuccess'), 'success')
       await loadCourses()
-    } catch {
+    } catch (error) {
+      const mediaErrorMessage = getMediaReferenceErrorMessage(error, 'course')
+      if (mediaErrorMessage) {
+        toast(mediaErrorMessage, 'error')
+        return
+      }
       toast(t('courses.home.feedback.actionError'), 'error')
     }
   }
@@ -434,6 +527,7 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
 }
 
 function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
+  clearCourseTabsInHeader()
   sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'create')
 
   const nt = (path: string, params?: Record<string, string | number>) => t(`courses.newCourse.${path}`, params)
@@ -443,7 +537,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
     description: string
     difficulty: CreateCourseInput['difficulty']
     category: string
-    imageUrl: string
+    imageMediaId: string
     selectedTagIds: string[]
   }
 
@@ -457,18 +551,18 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
           </div>
 
           <div class="new-course-steps">
-            <div class="new-course-step is-active">
+            <button type="button" class="new-course-step is-active" data-course-step="create">
               <span class="new-course-step-box"></span>
               <span>${nt('generalInfo')}</span>
-            </div>
-            <div class="new-course-step">
+            </button>
+            <button type="button" class="new-course-step" data-course-step="sections">
               <span class="new-course-step-box"></span>
               <span>${nt('sections')}</span>
-            </div>
-            <div class="new-course-step">
+            </button>
+            <button type="button" class="new-course-step" data-course-step="review">
               <span class="new-course-step-box"></span>
               <span>${nt('review')}</span>
-            </div>
+            </button>
           </div>
 
           <div class="new-course-divider"></div>
@@ -586,7 +680,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
       description: descriptionInput?.value ?? '',
       difficulty: ((difficultyInput?.value ?? 'beginner') as CreateCourseInput['difficulty']),
       category: categoryInput?.value ?? '',
-      imageUrl: imageInput?.value ?? '',
+      imageMediaId: imageInput?.value ?? '',
       selectedTagIds: selectedTags.map((tag) => tag.id),
     }
 
@@ -827,7 +921,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
     const description = descriptionInput?.value.trim() ?? ''
     const difficulty = (difficultyInput?.value ?? 'beginner') as CreateCourseInput['difficulty']
     const category = categoryInput?.value.trim() ?? ''
-    const imageUrl = imageInput?.value.trim() ?? ''
+    const imageMediaId = imageInput?.value.trim() ?? ''
     const tagIds = selectedTags.map((tag) => tag.id)
 
     clearFieldError(titleInput)
@@ -862,8 +956,11 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
       isValid = false
     }
 
-    if (!imageUrl) {
+    if (!imageMediaId) {
       setFieldError(imageInput, nt('errors.imageRequired'))
+      isValid = false
+    } else if (!isValidMediaIdFormat(imageMediaId)) {
+      setFieldError(imageInput, nt('errors.imageInvalidFormat'))
       isValid = false
     }
 
@@ -877,7 +974,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
         title,
         description,
         shortDescription: description.slice(0, 120),
-        imageUrl,
+        imageMediaId,
         difficulty,
         estimatedTime: '8 horas',
         passingThreshold: 70,
@@ -909,7 +1006,13 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
         renderCourseSectionsScreen(container, role, upsertedCourse)
         return
       }
-    } catch {
+    } catch (error) {
+      const mediaErrorMessage = getMediaReferenceErrorMessage(error, 'course')
+      if (mediaErrorMessage) {
+        setFieldError(imageInput, mediaErrorMessage)
+        toast(mediaErrorMessage, 'error')
+        return
+      }
       toast(t('courses.home.feedback.createError'), 'error')
     }
   }
@@ -918,7 +1021,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
   if (descriptionInput) descriptionInput.value = formDraft?.description ?? draftCourse?.description ?? ''
   if (difficultyInput) difficultyInput.value = formDraft?.difficulty ?? draftCourse?.difficulty ?? 'beginner'
   if (categoryInput) categoryInput.value = formDraft?.category ?? draftCourse?.category ?? ''
-  if (imageInput) imageInput.value = formDraft?.imageUrl ?? draftCourse?.imageUrl ?? ''
+  if (imageInput) imageInput.value = formDraft?.imageMediaId ?? draftCourse?.imageMediaId ?? ''
 
   if (descriptionInput && descriptionCount) {
     descriptionCount.textContent = `${descriptionInput.value.length} / 400 caracteres`
@@ -930,12 +1033,240 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
     persistFormDraft()
   })
 
+  const openMediaBankModal = () => {
+    if (!imageInput) return
+
+    type CourseMediaItem = {
+      id: string
+      title: string
+      altText: string
+      description: string
+      thumbnailUrl: string
+    }
+
+    let mode: 'upload' | 'library' = 'library'
+    let selectedMediaId: string | null = null
+    let mediaItems: CourseMediaItem[] = []
+    let selectedFile: File | null = null
+
+    const previewUrls = new Set<string>()
+    const modalWrapper = document.createElement('div')
+    modalWrapper.id = 'new-course-media-bank-modal'
+
+    const cleanup = () => {
+      previewUrls.forEach((url) => URL.revokeObjectURL(url))
+      previewUrls.clear()
+      modalWrapper.remove()
+      document.removeEventListener('keydown', handleEsc)
+    }
+
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') cleanup()
+    }
+
+    const loadLibrary = async () => {
+      const currentUser = getCurrentUser()
+      const response =
+        currentUser?.role === 'ADMIN' || role === 'ADMIN'
+          ? await mediaApi.listAdminMedia({ page: 1, limit: 80, kind: 'image' })
+          : await mediaApi.listMyMedia({ page: 1, limit: 80, kind: 'image' })
+
+      previewUrls.forEach((url) => URL.revokeObjectURL(url))
+      previewUrls.clear()
+
+      const loadedItems = await Promise.all(
+        response.items.map(async (item: MediaResponse) => {
+          const id = item._id ?? item.gridFsId
+          const blob = await mediaApi.streamMedia(id)
+          const objectUrl = URL.createObjectURL(blob)
+          previewUrls.add(objectUrl)
+
+          return {
+            id,
+            title: item.title || item.filename,
+            altText: item.altText || '',
+            description: item.description || '',
+            thumbnailUrl: objectUrl,
+          }
+        }),
+      )
+
+      mediaItems = loadedItems
+    }
+
+    const render = () => {
+      const selectedMedia = mediaItems.find((item) => item.id === selectedMediaId) ?? null
+
+      modalWrapper.innerHTML = `
+        <div class="sections-lesson-modal-overlay" id="new-course-media-bank-overlay" role="dialog" aria-modal="true" aria-labelledby="new-course-media-bank-title">
+          <div class="sections-lesson-modal-card new-course-media-bank-card">
+            <header class="sections-lesson-modal-header">
+              <h2 id="new-course-media-bank-title">${nt('fields.image')}</h2>
+              <button type="button" id="new-course-media-bank-close" class="sections-lesson-modal-close" aria-label="${t('courses.sections.modal.close')}">✕</button>
+            </header>
+
+            <div class="new-course-media-bank-tabs">
+              <button type="button" id="new-course-media-bank-tab-upload" class="new-course-media-bank-tab ${mode === 'upload' ? 'is-active' : ''}">${t('courses.home.mediaBank.internalTabs.upload')}</button>
+              <button type="button" id="new-course-media-bank-tab-library" class="new-course-media-bank-tab ${mode === 'library' ? 'is-active' : ''}">${t('courses.home.mediaBank.internalTabs.library')}</button>
+            </div>
+
+            <div class="sections-lesson-modal-body">
+              ${
+                mode === 'upload'
+                  ? `
+                <div class="new-course-media-bank-upload">
+                  <label class="new-course-field">
+                    <span>${nt('fields.image')}</span>
+                    <input id="new-course-media-upload-file" type="file" accept="image/jpeg,image/png,image/webp">
+                  </label>
+                  <label class="new-course-field">
+                    <span>${t('courses.home.mediaBank.library.fields.title')}</span>
+                    <input id="new-course-media-upload-title" type="text" maxlength="50" placeholder="${t('courses.home.mediaBank.library.fields.titlePlaceholder')}">
+                  </label>
+                  <label class="new-course-field">
+                    <span>${t('courses.home.mediaBank.library.fields.altText')}</span>
+                    <input id="new-course-media-upload-alt" type="text" maxlength="125" placeholder="${t('courses.home.mediaBank.library.fields.altTextPlaceholder')}">
+                  </label>
+                  <label class="new-course-field">
+                    <span>${t('courses.home.mediaBank.library.fields.description')}</span>
+                    <textarea id="new-course-media-upload-description" maxlength="200" placeholder="${t('courses.home.mediaBank.library.fields.descriptionPlaceholder')}"></textarea>
+                  </label>
+                </div>
+              `
+                  : `
+                <div class="new-course-media-bank-library">
+                  <div class="new-course-media-bank-grid">
+                    ${
+                      mediaItems.length === 0
+                        ? `<p class="new-course-media-empty">${t('courses.home.mediaBank.library.selectMediaHint')}</p>`
+                        : mediaItems
+                            .map(
+                              (item) => `
+                            <button type="button" class="new-course-media-item ${selectedMediaId === item.id ? 'is-selected' : ''}" data-media-id="${item.id}">
+                              <img src="${item.thumbnailUrl}" alt="${escapeHtml(item.altText || item.title)}">
+                              <span>${escapeHtml(item.title)}</span>
+                            </button>
+                          `,
+                            )
+                            .join('')
+                    }
+                  </div>
+                </div>
+              `
+              }
+            </div>
+
+            <footer class="sections-lesson-modal-actions new-course-media-bank-actions">
+              <button type="button" id="new-course-media-bank-cancel" class="new-course-cancel-btn">${nt('ctas.cancel')}</button>
+              <button type="button" id="new-course-media-bank-confirm" class="new-course-primary-btn" ${mode === 'library' && !selectedMedia ? 'disabled' : ''}>
+                ${mode === 'upload' ? t('courses.home.mediaBank.upload.addMedia') : nt('fields.imageSend')}
+              </button>
+            </footer>
+          </div>
+        </div>
+      `
+
+      const overlay = modalWrapper.querySelector('#new-course-media-bank-overlay') as HTMLElement | null
+      overlay?.addEventListener('click', (event) => {
+        if (event.target === overlay) cleanup()
+      })
+
+      const closeButton = modalWrapper.querySelector('#new-course-media-bank-close') as HTMLButtonElement | null
+      const cancelButton = modalWrapper.querySelector('#new-course-media-bank-cancel') as HTMLButtonElement | null
+      closeButton?.addEventListener('click', cleanup)
+      cancelButton?.addEventListener('click', cleanup)
+
+      const uploadTab = modalWrapper.querySelector('#new-course-media-bank-tab-upload') as HTMLButtonElement | null
+      const libraryTab = modalWrapper.querySelector('#new-course-media-bank-tab-library') as HTMLButtonElement | null
+      uploadTab?.addEventListener('click', () => {
+        mode = 'upload'
+        render()
+      })
+      libraryTab?.addEventListener('click', async () => {
+        mode = 'library'
+        try {
+          await loadLibrary()
+        } catch (error) {
+          toast(getMediaBankErrorMessage(error, 'list'), 'error')
+        }
+        render()
+      })
+
+      modalWrapper.querySelectorAll<HTMLButtonElement>('.new-course-media-item').forEach((itemButton) => {
+        itemButton.addEventListener('click', () => {
+          selectedMediaId = itemButton.dataset.mediaId ?? null
+          render()
+        })
+      })
+
+      const fileInput = modalWrapper.querySelector('#new-course-media-upload-file') as HTMLInputElement | null
+      fileInput?.addEventListener('change', () => {
+        selectedFile = fileInput.files?.[0] ?? null
+      })
+
+      const confirmButton = modalWrapper.querySelector('#new-course-media-bank-confirm') as HTMLButtonElement | null
+      confirmButton?.addEventListener('click', async () => {
+        if (mode === 'upload') {
+          const titleInputEl = modalWrapper.querySelector('#new-course-media-upload-title') as HTMLInputElement | null
+          const altInputEl = modalWrapper.querySelector('#new-course-media-upload-alt') as HTMLInputElement | null
+          const descInputEl = modalWrapper.querySelector('#new-course-media-upload-description') as HTMLTextAreaElement | null
+
+          const title = titleInputEl?.value.trim() ?? ''
+          const altText = altInputEl?.value.trim() ?? ''
+          const description = descInputEl?.value.trim() ?? ''
+
+          if (!selectedFile || !title || !altText || !description) {
+            toast(t('courses.home.mediaBank.upload.errors.requiredFields'), 'error')
+            return
+          }
+
+          try {
+            const uploadedBinary = await mediaApi.uploadImage({ file: selectedFile })
+            const uploadedId = uploadedBinary._id ?? uploadedBinary.gridFsId
+
+            if (!uploadedId) throw new Error('Missing media id')
+
+            const persisted = await mediaApi.createMediaMetadata(uploadedId, 'image', {
+              title,
+              altText,
+              description,
+            })
+
+            imageInput.value = persisted._id ?? persisted.gridFsId
+            clearFieldError(imageInput)
+            persistFormDraft()
+            cleanup()
+            toast(t('courses.home.mediaBank.upload.success'), 'success')
+          } catch (error) {
+            toast(getMediaBankErrorMessage(error, 'upload'), 'error')
+          }
+          return
+        }
+
+        const selected = mediaItems.find((item) => item.id === selectedMediaId)
+        if (!selected) return
+        imageInput.value = selected.id
+        clearFieldError(imageInput)
+        persistFormDraft()
+        cleanup()
+      })
+    }
+
+    document.body.appendChild(modalWrapper)
+    document.addEventListener('keydown', handleEsc)
+
+    void (async () => {
+      try {
+        await loadLibrary()
+      } catch (error) {
+        toast(getMediaBankErrorMessage(error, 'list'), 'error')
+      }
+      render()
+    })()
+  }
+
   imageTrigger?.addEventListener('click', () => {
-    const imageUrl = window.prompt(nt('fields.imagePlaceholder'))?.trim()
-    if (!imageUrl || !imageInput) return
-    imageInput.value = imageUrl
-    clearFieldError(imageInput)
-    persistFormDraft()
+    openMediaBankModal()
   })
 
   titleInput?.addEventListener('input', () => {
@@ -981,6 +1312,10 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
     const value = (imageInput.value ?? '').trim()
     if (!value) {
       setFieldError(imageInput, nt('errors.imageRequired'))
+      return
+    }
+    if (!isValidMediaIdFormat(value)) {
+      setFieldError(imageInput, nt('errors.imageInvalidFormat'))
       return
     }
     clearFieldError(imageInput)
@@ -1066,9 +1401,35 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
   nextButton?.addEventListener('click', async () => {
     await submitNewCourse('next')
   })
+
+  container.querySelectorAll<HTMLButtonElement>('[data-course-step]').forEach((stepButton) => {
+    stepButton.addEventListener('click', () => {
+      const target = stepButton.dataset.courseStep
+
+      if (target === 'create') return
+
+      persistFormDraft()
+
+      if (target === 'sections') {
+        const rawDraft = sessionStorage.getItem(COURSE_HOME_DRAFT_STORAGE_KEY)
+        const targetDraft = rawDraft ? (JSON.parse(rawDraft) as Course | null) : draftCourse
+        sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'sections')
+        renderCourseSectionsScreen(container, role, targetDraft)
+        return
+      }
+
+      if (target === 'review') {
+        const rawDraft = sessionStorage.getItem(COURSE_HOME_DRAFT_STORAGE_KEY)
+        const targetDraft = rawDraft ? (JSON.parse(rawDraft) as Course | null) : draftCourse
+        sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'review')
+        renderCourseReviewScreen(container, role, targetDraft)
+      }
+    })
+  })
 }
 
 function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, draftCourse: Course | null) {
+  clearCourseTabsInHeader()
   sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'sections')
 
   const st = (path: string, params?: Record<string, string | number>) => t(`courses.sections.${path}`, params)
@@ -1085,18 +1446,18 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
           </div>
 
           <div class="new-course-steps">
-            <div class="new-course-step is-complete">
+            <button type="button" class="new-course-step is-complete" data-course-step="create">
               <span class="new-course-step-check">✓</span>
               <span>${t('courses.newCourse.generalInfo')}</span>
-            </div>
-            <div class="new-course-step is-active">
+            </button>
+            <button type="button" class="new-course-step is-active" data-course-step="sections">
               <span class="new-course-step-box"></span>
               <span>${t('courses.newCourse.sections')}</span>
-            </div>
-            <div class="new-course-step">
+            </button>
+            <button type="button" class="new-course-step" data-course-step="review">
               <span class="new-course-step-box"></span>
               <span>${t('courses.newCourse.review')}</span>
-            </div>
+            </button>
           </div>
 
           <div class="new-course-divider"></div>
@@ -1243,7 +1604,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
   }
 
   let selectedLessonVideo: File | null = null
-  let selectedExerciseImage: File | null = null
+  let selectedExerciseImageMediaId: string | null = null
   let deleteSectionModalState: {
     isOpen: boolean
     sectionId: string | null
@@ -1594,7 +1955,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       sectionId: null,
       editingActivityId: null,
     }
-    selectedExerciseImage = null
+    selectedExerciseImageMediaId = null
     clearLessonModalPortal()
   }
 
@@ -1841,7 +2202,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       imageError: false,
     }
 
-    selectedExerciseImage = null
+    selectedExerciseImageMediaId = null
 
     renderExerciseModal()
   }
@@ -1908,8 +2269,8 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
           question: activityQuestion,
           alternatives: isTrueFalse ? [trueLabel, falseLabel] : (activityOptions.length >= 2 ? activityOptions : ['', '']),
           correctAlternativeIndex: numericCorrectAnswer,
-          includeImage: false,
-          imageFileName: '',
+          includeImage: Boolean(activity.imageMediaId),
+          imageFileName: activity.imageMediaId ? t('courses.home.mediaBank.library.selectMediaHint') : '',
           titleError: false,
           contentTypeError: false,
           questionError: false,
@@ -1918,7 +2279,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
           imageError: false,
         }
 
-        selectedExerciseImage = null
+        selectedExerciseImageMediaId = activity.imageMediaId ?? null
         renderExerciseModal()
       }
     } catch {
@@ -2067,6 +2428,292 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     const canAddAlternative = lessonModalState.videoAlternatives.length < 4
     const canRemoveAlternative = lessonModalState.videoAlternatives.length > 2
 
+    const openLessonVideoMediaModal = () => {
+      type LessonVideoMediaItem = {
+        id: string
+        title: string
+        altText: string
+        description: string
+        blob: Blob
+        previewUrl: string
+      }
+
+      let mode: 'upload' | 'library' = 'library'
+      let selectedMediaId: string | null = null
+      let selectedFile: File | null = selectedLessonVideo
+      let mediaItems: LessonVideoMediaItem[] = []
+
+      const previewUrls = new Set<string>()
+      const modalWrapper = document.createElement('div')
+      modalWrapper.id = 'new-course-media-bank-modal'
+
+      const cleanup = () => {
+        previewUrls.forEach((url) => URL.revokeObjectURL(url))
+        previewUrls.clear()
+        modalWrapper.remove()
+        document.removeEventListener('keydown', handleEsc)
+      }
+
+      const handleEsc = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') cleanup()
+      }
+
+      const setVideoThumbnailFrame = (videoElement: HTMLVideoElement, frameInSeconds = 5) => {
+        const applyFrame = () => {
+          const duration = Number.isFinite(videoElement.duration) ? videoElement.duration : 0
+          if (duration <= 0) {
+            videoElement.pause()
+            return
+          }
+
+          const targetTime = Math.min(frameInSeconds, Math.max(duration - 0.1, 0))
+
+          const pauseAtFrame = () => {
+            videoElement.pause()
+          }
+
+          videoElement.addEventListener('seeked', pauseAtFrame, { once: true })
+
+          try {
+            videoElement.currentTime = targetTime
+          } catch {
+            videoElement.pause()
+          }
+        }
+
+        if (videoElement.readyState >= 1) {
+          applyFrame()
+          return
+        }
+
+        videoElement.addEventListener('loadedmetadata', applyFrame, { once: true })
+      }
+
+      const loadLibrary = async () => {
+        const currentUser = getCurrentUser()
+        const response =
+          currentUser?.role === 'ADMIN' || role === 'ADMIN'
+            ? await mediaApi.listAdminMedia({ page: 1, limit: 80, kind: 'video' })
+            : await mediaApi.listMyMedia({ page: 1, limit: 80, kind: 'video' })
+
+        previewUrls.forEach((url) => URL.revokeObjectURL(url))
+        previewUrls.clear()
+
+        const loadedItems = await Promise.all(
+          response.items.map(async (item: MediaResponse) => {
+            const id = item._id ?? item.gridFsId
+            const blob = await mediaApi.streamMedia(id)
+            const previewUrl = URL.createObjectURL(blob)
+            previewUrls.add(previewUrl)
+
+            return {
+              id,
+              title: item.title || item.filename,
+              altText: item.altText || '',
+              description: item.description || '',
+              blob,
+              previewUrl,
+            }
+          }),
+        )
+
+        mediaItems = loadedItems
+      }
+
+      const renderMediaModal = () => {
+        const selectedMedia = mediaItems.find((item) => item.id === selectedMediaId) ?? null
+
+        modalWrapper.innerHTML = `
+          <div class="sections-lesson-modal-overlay" id="new-course-media-bank-overlay" role="dialog" aria-modal="true" aria-labelledby="new-course-media-bank-title">
+            <div class="sections-lesson-modal-card new-course-media-bank-card">
+              <header class="sections-lesson-modal-header">
+                <h2 id="new-course-media-bank-title">${st('modal.fields.videoUpload')}</h2>
+                <button type="button" id="new-course-media-bank-close" class="sections-lesson-modal-close" aria-label="${t('courses.sections.modal.close')}">✕</button>
+              </header>
+
+              <div class="new-course-media-bank-tabs">
+                <button type="button" id="new-course-media-bank-tab-upload" class="new-course-media-bank-tab ${mode === 'upload' ? 'is-active' : ''}">${t('courses.home.mediaBank.internalTabs.upload')}</button>
+                <button type="button" id="new-course-media-bank-tab-library" class="new-course-media-bank-tab ${mode === 'library' ? 'is-active' : ''}">${t('courses.home.mediaBank.internalTabs.library')}</button>
+              </div>
+
+              <div class="sections-lesson-modal-body">
+                ${
+                  mode === 'upload'
+                    ? `
+                  <div class="new-course-media-bank-upload">
+                    <label class="new-course-field">
+                      <span>${st('modal.fields.videoUpload')}</span>
+                      <input id="lesson-media-upload-file" type="file" accept="video/*">
+                    </label>
+                    <label class="new-course-field">
+                      <span>${t('courses.home.mediaBank.library.fields.title')}</span>
+                      <input id="lesson-media-upload-title" type="text" maxlength="50" placeholder="${t('courses.home.mediaBank.library.fields.titlePlaceholder')}">
+                    </label>
+                    <label class="new-course-field">
+                      <span>${t('courses.home.mediaBank.library.fields.altText')}</span>
+                      <input id="lesson-media-upload-alt" type="text" maxlength="125" placeholder="${t('courses.home.mediaBank.library.fields.altTextPlaceholder')}">
+                    </label>
+                    <label class="new-course-field">
+                      <span>${t('courses.home.mediaBank.library.fields.description')}</span>
+                      <textarea id="lesson-media-upload-description" maxlength="200" placeholder="${t('courses.home.mediaBank.library.fields.descriptionPlaceholder')}"></textarea>
+                    </label>
+                  </div>
+                `
+                    : `
+                  <div class="new-course-media-bank-library">
+                    <div class="new-course-media-bank-grid">
+                      ${
+                        mediaItems.length === 0
+                          ? `<p class="new-course-media-empty">${t('courses.home.mediaBank.library.selectMediaHint')}</p>`
+                          : mediaItems
+                              .map(
+                                (item) => `
+                              <button type="button" class="new-course-media-item ${selectedMediaId === item.id ? 'is-selected' : ''}" data-media-id="${item.id}">
+                                <video src="${item.previewUrl}" preload="metadata" muted playsinline></video>
+                                <span>${escapeHtml(item.title)}</span>
+                              </button>
+                            `,
+                              )
+                              .join('')
+                      }
+                    </div>
+                  </div>
+                `
+                }
+              </div>
+
+              <footer class="sections-lesson-modal-actions new-course-media-bank-actions">
+                <button type="button" id="new-course-media-bank-cancel" class="new-course-cancel-btn">${st('modal.cancel')}</button>
+                <button type="button" id="new-course-media-bank-confirm" class="new-course-primary-btn" ${mode === 'library' && !selectedMedia ? 'disabled' : ''}>
+                  ${mode === 'upload' ? t('courses.home.mediaBank.upload.addMedia') : st('modal.fields.videoSelect')}
+                </button>
+              </footer>
+            </div>
+          </div>
+        `
+
+        modalWrapper.querySelectorAll<HTMLVideoElement>('.new-course-media-item video').forEach((videoElement) => {
+          setVideoThumbnailFrame(videoElement, 5)
+        })
+
+        const overlay = modalWrapper.querySelector('#new-course-media-bank-overlay') as HTMLElement | null
+        overlay?.addEventListener('click', (event) => {
+          if (event.target === overlay) cleanup()
+        })
+
+        const closeButton = modalWrapper.querySelector('#new-course-media-bank-close') as HTMLButtonElement | null
+        const cancelButton = modalWrapper.querySelector('#new-course-media-bank-cancel') as HTMLButtonElement | null
+        closeButton?.addEventListener('click', cleanup)
+        cancelButton?.addEventListener('click', cleanup)
+
+        const uploadTab = modalWrapper.querySelector('#new-course-media-bank-tab-upload') as HTMLButtonElement | null
+        const libraryTab = modalWrapper.querySelector('#new-course-media-bank-tab-library') as HTMLButtonElement | null
+        uploadTab?.addEventListener('click', () => {
+          mode = 'upload'
+          renderMediaModal()
+        })
+        libraryTab?.addEventListener('click', async () => {
+          mode = 'library'
+          try {
+            await loadLibrary()
+          } catch (error) {
+            toast(getMediaBankErrorMessage(error, 'list'), 'error')
+          }
+          renderMediaModal()
+        })
+
+        modalWrapper.querySelectorAll<HTMLButtonElement>('.new-course-media-item').forEach((itemButton) => {
+          itemButton.addEventListener('click', () => {
+            selectedMediaId = itemButton.dataset.mediaId ?? null
+            renderMediaModal()
+          })
+        })
+
+        const fileInput = modalWrapper.querySelector('#lesson-media-upload-file') as HTMLInputElement | null
+        fileInput?.addEventListener('change', async () => {
+          const pickedFile = fileInput.files?.[0] ?? null
+          if (!pickedFile) {
+            selectedFile = null
+            return
+          }
+
+          const isValidDuration = await validateVideoDuration(pickedFile)
+          if (!isValidDuration) {
+            selectedFile = null
+            toast(st('modal.videoTooLong'), 'error')
+            return
+          }
+
+          selectedFile = pickedFile
+        })
+
+        const confirmButton = modalWrapper.querySelector('#new-course-media-bank-confirm') as HTMLButtonElement | null
+        confirmButton?.addEventListener('click', async () => {
+          if (mode === 'upload') {
+            const titleInputEl = modalWrapper.querySelector('#lesson-media-upload-title') as HTMLInputElement | null
+            const altInputEl = modalWrapper.querySelector('#lesson-media-upload-alt') as HTMLInputElement | null
+            const descInputEl = modalWrapper.querySelector('#lesson-media-upload-description') as HTMLTextAreaElement | null
+
+            const title = titleInputEl?.value.trim() ?? ''
+            const altText = altInputEl?.value.trim() ?? ''
+            const description = descInputEl?.value.trim() ?? ''
+
+            if (!selectedFile || !title || !altText || !description) {
+              toast(t('courses.home.mediaBank.upload.errors.requiredFields'), 'error')
+              return
+            }
+
+            try {
+              const uploadedBinary = await mediaApi.uploadVideo({ file: selectedFile })
+              const uploadedId = uploadedBinary._id ?? uploadedBinary.gridFsId
+
+              if (!uploadedId) throw new Error('Missing media id')
+
+              await mediaApi.createMediaMetadata(uploadedId, 'video', {
+                title,
+                altText,
+                description,
+              })
+
+              selectedLessonVideo = selectedFile
+              lessonModalState.videoFileName = selectedFile.name
+              lessonModalState.videoError = false
+              renderLessonModal()
+              cleanup()
+              toast(t('courses.home.mediaBank.upload.success'), 'success')
+            } catch (error) {
+              toast(getMediaBankErrorMessage(error, 'upload'), 'error')
+            }
+
+            return
+          }
+
+          const selected = mediaItems.find((item) => item.id === selectedMediaId)
+          if (!selected) return
+
+          selectedLessonVideo = new File([selected.blob], `${selected.title || 'video'}.mp4`, {
+            type: selected.blob.type || 'video/mp4',
+          })
+          lessonModalState.videoFileName = selected.title || 'video'
+          lessonModalState.videoError = false
+          renderLessonModal()
+          cleanup()
+        })
+      }
+
+      document.body.appendChild(modalWrapper)
+      document.addEventListener('keydown', handleEsc)
+
+      void (async () => {
+        try {
+          await loadLibrary()
+        } catch (error) {
+          toast(getMediaBankErrorMessage(error, 'list'), 'error')
+        }
+        renderMediaModal()
+      })()
+    }
+
     modalPortal.innerHTML = `
       <div class="sections-lesson-modal-overlay" id="sections-lesson-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="sections-lesson-modal-title">
         <div class="sections-lesson-modal-card">
@@ -2098,9 +2745,8 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
             ${showVideoField ? `
               <div class="sections-lesson-modal-video ${lessonModalState.videoError ? 'is-invalid' : ''}">
                 <strong>${st('modal.fields.videoUpload')} <em>*</em></strong>
-                <input type="file" id="lesson-video-input" accept="video/*" hidden>
                 <div class="sections-lesson-modal-video-box">
-                  <button type="button" id="lesson-video-trigger" class="sections-lesson-modal-video-btn">${st('modal.fields.videoSelect')}</button>
+                  <button type="button" id="lesson-video-bank-trigger" class="sections-lesson-modal-video-btn">${st('modal.fields.videoSelect')}</button>
                   ${lessonModalState.videoFileName ? `<div class="sections-lesson-modal-video-name">🎬 ${escapeHtml(lessonModalState.videoFileName)}</div>` : ''}
                 </div>
                 <small>${st('modal.fields.videoHint')}</small>
@@ -2182,8 +2828,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     const cancelButton = document.getElementById('sections-lesson-modal-cancel') as HTMLButtonElement | null
     const submitButton = document.getElementById('sections-lesson-modal-submit') as HTMLButtonElement | null
     const lessonNameInput = document.getElementById('lesson-name-input') as HTMLInputElement | null
-    const lessonVideoInput = document.getElementById('lesson-video-input') as HTMLInputElement | null
-    const lessonVideoTrigger = document.getElementById('lesson-video-trigger') as HTMLButtonElement | null
+    const lessonVideoBankTrigger = document.getElementById('lesson-video-bank-trigger') as HTMLButtonElement | null
     const lessonHasQuestionInput = document.getElementById('lesson-video-has-question') as HTMLInputElement | null
     const lessonVideoQuestionInput = document.getElementById('lesson-video-question') as HTMLTextAreaElement | null
     const lessonAddAlternativeButton = document.getElementById('lesson-add-alternative') as HTMLButtonElement | null
@@ -2296,28 +2941,8 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       renderLessonModal()
     })
 
-    lessonVideoTrigger?.addEventListener('click', () => {
-      lessonVideoInput?.click()
-    })
-
-    lessonVideoInput?.addEventListener('change', async () => {
-      const selectedFile = lessonVideoInput.files?.[0] ?? null
-      if (!selectedFile) return
-
-      const isValidDuration = await validateVideoDuration(selectedFile)
-      if (!isValidDuration) {
-        lessonModalState.videoError = true
-        lessonModalState.videoFileName = ''
-        selectedLessonVideo = null
-        toast(st('modal.videoTooLong'), 'error')
-        renderLessonModal()
-        return
-      }
-
-      selectedLessonVideo = selectedFile
-      lessonModalState.videoFileName = selectedFile.name
-      lessonModalState.videoError = false
-      renderLessonModal()
+    lessonVideoBankTrigger?.addEventListener('click', () => {
+      openLessonVideoMediaModal()
     })
 
     firstTextInput?.addEventListener('input', () => {
@@ -2475,6 +3100,242 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     const canAddAlternative = exerciseModalState.alternatives.length < 4
     const canRemoveAlternative = exerciseModalState.alternatives.length > 2
 
+    const openExerciseImageMediaModal = () => {
+      type ExerciseImageMediaItem = {
+        id: string
+        title: string
+        altText: string
+        description: string
+        blob: Blob
+        previewUrl: string
+      }
+
+      let mode: 'upload' | 'library' = 'library'
+      let selectedMediaId: string | null = null
+      let selectedFile: File | null = null
+      let mediaItems: ExerciseImageMediaItem[] = []
+
+      const previewUrls = new Set<string>()
+      const modalWrapper = document.createElement('div')
+      modalWrapper.id = 'new-course-media-bank-modal'
+
+      const cleanup = () => {
+        previewUrls.forEach((url) => URL.revokeObjectURL(url))
+        previewUrls.clear()
+        modalWrapper.remove()
+        document.removeEventListener('keydown', handleEsc)
+      }
+
+      const handleEsc = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') cleanup()
+      }
+
+      const loadLibrary = async () => {
+        const currentUser = getCurrentUser()
+        const response =
+          currentUser?.role === 'ADMIN' || role === 'ADMIN'
+            ? await mediaApi.listAdminMedia({ page: 1, limit: 80, kind: 'image' })
+            : await mediaApi.listMyMedia({ page: 1, limit: 80, kind: 'image' })
+
+        previewUrls.forEach((url) => URL.revokeObjectURL(url))
+        previewUrls.clear()
+
+        const loadedItems = await Promise.all(
+          response.items.map(async (item: MediaResponse) => {
+            const id = item._id ?? item.gridFsId
+            const blob = await mediaApi.streamMedia(id)
+            const previewUrl = URL.createObjectURL(blob)
+            previewUrls.add(previewUrl)
+
+            return {
+              id,
+              title: item.title || item.filename,
+              altText: item.altText || '',
+              description: item.description || '',
+              blob,
+              previewUrl,
+            }
+          }),
+        )
+
+        mediaItems = loadedItems
+      }
+
+      const renderMediaModal = () => {
+        const selectedMedia = mediaItems.find((item) => item.id === selectedMediaId) ?? null
+
+        modalWrapper.innerHTML = `
+          <div class="sections-lesson-modal-overlay" id="new-course-media-bank-overlay" role="dialog" aria-modal="true" aria-labelledby="new-course-media-bank-title">
+            <div class="sections-lesson-modal-card new-course-media-bank-card">
+              <header class="sections-lesson-modal-header">
+                <h2 id="new-course-media-bank-title">${et('fields.imageUpload')}</h2>
+                <button type="button" id="new-course-media-bank-close" class="sections-lesson-modal-close" aria-label="${t('courses.sections.modal.close')}">✕</button>
+              </header>
+
+              <div class="new-course-media-bank-tabs">
+                <button type="button" id="new-course-media-bank-tab-upload" class="new-course-media-bank-tab ${mode === 'upload' ? 'is-active' : ''}">${t('courses.home.mediaBank.internalTabs.upload')}</button>
+                <button type="button" id="new-course-media-bank-tab-library" class="new-course-media-bank-tab ${mode === 'library' ? 'is-active' : ''}">${t('courses.home.mediaBank.internalTabs.library')}</button>
+              </div>
+
+              <div class="sections-lesson-modal-body">
+                ${
+                  mode === 'upload'
+                    ? `
+                  <div class="new-course-media-bank-upload">
+                    <label class="new-course-field">
+                      <span>${et('fields.imageUpload')}</span>
+                      <input id="exercise-media-upload-file" type="file" accept="image/jpeg,image/png,image/webp">
+                    </label>
+                    <label class="new-course-field">
+                      <span>${t('courses.home.mediaBank.library.fields.title')}</span>
+                      <input id="exercise-media-upload-title" type="text" maxlength="50" placeholder="${t('courses.home.mediaBank.library.fields.titlePlaceholder')}">
+                    </label>
+                    <label class="new-course-field">
+                      <span>${t('courses.home.mediaBank.library.fields.altText')}</span>
+                      <input id="exercise-media-upload-alt" type="text" maxlength="125" placeholder="${t('courses.home.mediaBank.library.fields.altTextPlaceholder')}">
+                    </label>
+                    <label class="new-course-field">
+                      <span>${t('courses.home.mediaBank.library.fields.description')}</span>
+                      <textarea id="exercise-media-upload-description" maxlength="200" placeholder="${t('courses.home.mediaBank.library.fields.descriptionPlaceholder')}"></textarea>
+                    </label>
+                  </div>
+                `
+                    : `
+                  <div class="new-course-media-bank-library">
+                    <div class="new-course-media-bank-grid">
+                      ${
+                        mediaItems.length === 0
+                          ? `<p class="new-course-media-empty">${t('courses.home.mediaBank.library.selectMediaHint')}</p>`
+                          : mediaItems
+                              .map(
+                                (item) => `
+                              <button type="button" class="new-course-media-item ${selectedMediaId === item.id ? 'is-selected' : ''}" data-media-id="${item.id}">
+                                <img src="${item.previewUrl}" alt="${escapeHtml(item.altText || item.title)}">
+                                <span>${escapeHtml(item.title)}</span>
+                              </button>
+                            `,
+                              )
+                              .join('')
+                      }
+                    </div>
+                  </div>
+                `
+                }
+              </div>
+
+              <footer class="sections-lesson-modal-actions new-course-media-bank-actions">
+                <button type="button" id="new-course-media-bank-cancel" class="new-course-cancel-btn">${et('cancel')}</button>
+                <button type="button" id="new-course-media-bank-confirm" class="new-course-primary-btn" ${mode === 'library' && !selectedMedia ? 'disabled' : ''}>
+                  ${mode === 'upload' ? t('courses.home.mediaBank.upload.addMedia') : et('fields.imageSelect')}
+                </button>
+              </footer>
+            </div>
+          </div>
+        `
+
+        const overlay = modalWrapper.querySelector('#new-course-media-bank-overlay') as HTMLElement | null
+        overlay?.addEventListener('click', (event) => {
+          if (event.target === overlay) cleanup()
+        })
+
+        const closeButton = modalWrapper.querySelector('#new-course-media-bank-close') as HTMLButtonElement | null
+        const cancelButton = modalWrapper.querySelector('#new-course-media-bank-cancel') as HTMLButtonElement | null
+        closeButton?.addEventListener('click', cleanup)
+        cancelButton?.addEventListener('click', cleanup)
+
+        const uploadTab = modalWrapper.querySelector('#new-course-media-bank-tab-upload') as HTMLButtonElement | null
+        const libraryTab = modalWrapper.querySelector('#new-course-media-bank-tab-library') as HTMLButtonElement | null
+        uploadTab?.addEventListener('click', () => {
+          mode = 'upload'
+          renderMediaModal()
+        })
+        libraryTab?.addEventListener('click', async () => {
+          mode = 'library'
+          try {
+            await loadLibrary()
+          } catch (error) {
+            toast(getMediaBankErrorMessage(error, 'list'), 'error')
+          }
+          renderMediaModal()
+        })
+
+        modalWrapper.querySelectorAll<HTMLButtonElement>('.new-course-media-item').forEach((itemButton) => {
+          itemButton.addEventListener('click', () => {
+            selectedMediaId = itemButton.dataset.mediaId ?? null
+            renderMediaModal()
+          })
+        })
+
+        const fileInput = modalWrapper.querySelector('#exercise-media-upload-file') as HTMLInputElement | null
+        fileInput?.addEventListener('change', () => {
+          selectedFile = fileInput.files?.[0] ?? null
+        })
+
+        const confirmButton = modalWrapper.querySelector('#new-course-media-bank-confirm') as HTMLButtonElement | null
+        confirmButton?.addEventListener('click', async () => {
+          if (mode === 'upload') {
+            const titleInputEl = modalWrapper.querySelector('#exercise-media-upload-title') as HTMLInputElement | null
+            const altInputEl = modalWrapper.querySelector('#exercise-media-upload-alt') as HTMLInputElement | null
+            const descInputEl = modalWrapper.querySelector('#exercise-media-upload-description') as HTMLTextAreaElement | null
+
+            const title = titleInputEl?.value.trim() ?? ''
+            const altText = altInputEl?.value.trim() ?? ''
+            const description = descInputEl?.value.trim() ?? ''
+
+            if (!selectedFile || !title || !altText || !description) {
+              toast(t('courses.home.mediaBank.upload.errors.requiredFields'), 'error')
+              return
+            }
+
+            try {
+              const uploadedBinary = await mediaApi.uploadImage({ file: selectedFile })
+              const uploadedId = uploadedBinary._id ?? uploadedBinary.gridFsId
+
+              if (!uploadedId) throw new Error('Missing media id')
+
+              await mediaApi.createMediaMetadata(uploadedId, 'image', {
+                title,
+                altText,
+                description,
+              })
+
+              selectedExerciseImageMediaId = uploadedId
+              exerciseModalState.imageFileName = selectedFile.name
+              exerciseModalState.imageError = false
+              renderExerciseModal()
+              cleanup()
+              toast(t('courses.home.mediaBank.upload.success'), 'success')
+            } catch (error) {
+              toast(getMediaBankErrorMessage(error, 'upload'), 'error')
+            }
+
+            return
+          }
+
+          const selected = mediaItems.find((item) => item.id === selectedMediaId)
+          if (!selected) return
+
+          selectedExerciseImageMediaId = selected.id
+          exerciseModalState.imageFileName = selected.title || 'image'
+          exerciseModalState.imageError = false
+          renderExerciseModal()
+          cleanup()
+        })
+      }
+
+      document.body.appendChild(modalWrapper)
+      document.addEventListener('keydown', handleEsc)
+
+      void (async () => {
+        try {
+          await loadLibrary()
+        } catch (error) {
+          toast(getMediaBankErrorMessage(error, 'list'), 'error')
+        }
+        renderMediaModal()
+      })()
+    }
+
     modalPortal.innerHTML = `
       <div class="sections-lesson-modal-overlay" id="sections-exercise-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="sections-exercise-modal-title">
         <div class="sections-lesson-modal-card sections-exercise-modal-card">
@@ -2578,9 +3439,8 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
                 ${showExerciseImageField ? `
                   <div class="sections-lesson-modal-video ${exerciseModalState.imageError ? 'is-invalid' : ''}">
                     <strong>${et('fields.imageUpload')} <em>*</em></strong>
-                    <input type="file" id="exercise-image-input" accept="image/*" hidden>
                     <div class="sections-lesson-modal-video-box">
-                      <button type="button" id="exercise-image-trigger" class="sections-lesson-modal-video-btn">${et('fields.imageSelect')}</button>
+                      <button type="button" id="exercise-image-bank-trigger" class="sections-lesson-modal-video-btn">${et('fields.imageSelect')}</button>
                       ${exerciseModalState.imageFileName ? `<div class="sections-lesson-modal-video-name">🖼️ ${escapeHtml(exerciseModalState.imageFileName)}</div>` : ''}
                     </div>
                     <small>${et('fields.imageHint')}</small>
@@ -2607,8 +3467,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     const exerciseAddAlternativeButton = document.getElementById('exercise-add-alternative') as HTMLButtonElement | null
     const exerciseRemoveAlternativeButton = document.getElementById('exercise-remove-alternative') as HTMLButtonElement | null
     const exerciseIncludeImageToggle = document.getElementById('exercise-include-image-toggle') as HTMLInputElement | null
-    const exerciseImageInput = document.getElementById('exercise-image-input') as HTMLInputElement | null
-    const exerciseImageTrigger = document.getElementById('exercise-image-trigger') as HTMLButtonElement | null
+    const exerciseImageBankTrigger = document.getElementById('exercise-image-bank-trigger') as HTMLButtonElement | null
     const modalCard = document.querySelector('.sections-lesson-modal-card') as HTMLElement | null
 
     if (modalCard) {
@@ -2663,7 +3522,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
           exerciseModalState.correctAlternativeIndex = 0
           exerciseModalState.includeImage = false
           exerciseModalState.imageFileName = ''
-          selectedExerciseImage = null
+          selectedExerciseImageMediaId = null
         }
 
         renderExerciseModal()
@@ -2676,30 +3535,14 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
       if (!exerciseModalState.includeImage) {
         exerciseModalState.imageFileName = ''
-        selectedExerciseImage = null
+        selectedExerciseImageMediaId = null
       }
 
       renderExerciseModal()
     })
 
-    exerciseImageTrigger?.addEventListener('click', () => {
-      exerciseImageInput?.click()
-    })
-
-    exerciseImageInput?.addEventListener('change', () => {
-      const selectedImage = exerciseImageInput.files?.[0] ?? null
-
-      if (!selectedImage) {
-        exerciseModalState.imageFileName = ''
-        selectedExerciseImage = null
-        renderExerciseModal()
-        return
-      }
-
-      selectedExerciseImage = selectedImage
-      exerciseModalState.imageFileName = selectedImage.name
-      exerciseModalState.imageError = false
-      renderExerciseModal()
+    exerciseImageBankTrigger?.addEventListener('click', () => {
+      openExerciseImageMediaModal()
     })
 
     document.querySelectorAll<HTMLInputElement>('[data-exercise-alternative-index]').forEach((input) => {
@@ -2759,7 +3602,9 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       const requiresEditableAlternatives = exerciseModalState.contentType === 'multipleChoice'
       const isQuestionValid = !requiresChoiceQuestion || exerciseModalState.question.trim().length > 0
       const areAlternativesValid = !requiresEditableAlternatives || exerciseModalState.alternatives.every((alternative) => alternative.trim().length > 0)
-      const isExerciseImageValid = !requiresChoiceQuestion || !exerciseModalState.includeImage || Boolean(selectedExerciseImage)
+      const isExerciseImageValid = !requiresChoiceQuestion
+        || !exerciseModalState.includeImage
+        || (Boolean(selectedExerciseImageMediaId) && isValidMediaIdFormat(selectedExerciseImageMediaId ?? ''))
       const isCorrectAlternativeValid = !requiresChoiceQuestion
         || (
           exerciseModalState.correctAlternativeIndex !== null
@@ -2810,6 +3655,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
             question: exerciseModalState.question.trim(),
             options,
             correctAnswer: exerciseModalState.correctAlternativeIndex ?? 0,
+            imageMediaId: exerciseModalState.includeImage ? selectedExerciseImageMediaId : null,
           })
 
           const target = section.activities.find((item) => item.id === updated.id)
@@ -2828,6 +3674,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
             question: exerciseModalState.question.trim(),
             options,
             correctAnswer: exerciseModalState.correctAlternativeIndex ?? 0,
+            imageMediaId: exerciseModalState.includeImage ? selectedExerciseImageMediaId : null,
           })
 
           section.activities.push({
@@ -2849,7 +3696,14 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
         updateWorkload()
         toast(exerciseModalState.editingActivityId ? et('updateSuccess') : et('success'), 'success')
         closeExerciseModal()
-      } catch {
+      } catch (error) {
+        const mediaErrorMessage = getMediaReferenceErrorMessage(error, 'exercise')
+        if (mediaErrorMessage) {
+          exerciseModalState.imageError = true
+          renderExerciseModal()
+          toast(mediaErrorMessage, 'error')
+          return
+        }
         toast(t('courses.home.feedback.actionError'), 'error')
       }
     })
@@ -3077,10 +3931,28 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     void toReview()
   })
 
+  container.querySelectorAll<HTMLButtonElement>('[data-course-step]').forEach((stepButton) => {
+    stepButton.addEventListener('click', () => {
+      const target = stepButton.dataset.courseStep
+
+      if (target === 'create') {
+        void toCreate()
+        return
+      }
+
+      if (target === 'sections') return
+
+      if (target === 'review') {
+        void toReview()
+      }
+    })
+  })
+
   void loadSectionsFromBackend()
 }
 
 function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, draftCourse: Course | null) {
+  clearCourseTabsInHeader()
   sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'review')
 
   const rr = (path: string, params?: Record<string, string | number>) => t(`courses.review.${path}`, params)
@@ -3099,18 +3971,18 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
           </div>
 
           <div class="new-course-steps">
-            <div class="new-course-step is-complete">
+            <button type="button" class="new-course-step is-complete" data-course-step="create">
               <span class="new-course-step-check">✓</span>
               <span>${ns('generalInfo')}</span>
-            </div>
-            <div class="new-course-step is-complete">
+            </button>
+            <button type="button" class="new-course-step is-complete" data-course-step="sections">
               <span class="new-course-step-check">✓</span>
               <span>${ns('sections')}</span>
-            </div>
-            <div class="new-course-step is-active">
+            </button>
+            <button type="button" class="new-course-step is-active" data-course-step="review">
               <span class="new-course-step-box"></span>
               <span>${ns('review')}</span>
-            </div>
+            </button>
           </div>
 
           <div class="new-course-divider"></div>
@@ -3185,6 +4057,11 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
     const rawDraft = sessionStorage.getItem(COURSE_HOME_DRAFT_STORAGE_KEY)
     const draft = rawDraft ? (JSON.parse(rawDraft) as Course | null) : draftCourse
     renderCourseSectionsScreen(container, role, draft)
+  }
+
+  const toCreate = () => {
+    sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'create')
+    renderNewCourseScreen(container, role)
   }
 
   const deleteCourseWithDependents = async (courseId: string) => {
@@ -3333,6 +4210,8 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
             id: section.id,
             title: local?.name?.trim() || section.title,
             description: local?.description?.trim() || '',
+            videoMediaId: section.videoMediaId,
+            thumbnailMediaId: section.thumbnailMediaId,
           }
         })
 
@@ -3341,7 +4220,29 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
           const activities = await activitiesApi.getActivitiesBySection(section.id)
           const lessons = activities.filter((item) => item.type === 'video_pause' || item.type === 'text_reading').length
           const exercises = activities.filter((item) => item.type === 'multiple_choice' || item.type === 'true_false').length
-          return { ...section, lessons, exercises }
+          const firstImageActivity = activities.find((item) => typeof item.imageMediaId === 'string' && item.imageMediaId.trim().length > 0)
+
+          const mediaPreview = section.videoMediaId
+            ? {
+                kind: 'video' as const,
+                src: getMediaStreamUrl(section.videoMediaId),
+                poster: section.thumbnailMediaId
+                  ? getMediaStreamUrl(section.thumbnailMediaId)
+                  : (firstImageActivity?.imageMediaId ? getMediaStreamUrl(firstImageActivity.imageMediaId) : ''),
+              }
+            : section.thumbnailMediaId
+              ? {
+                  kind: 'image' as const,
+                  src: getMediaStreamUrl(section.thumbnailMediaId),
+                }
+              : firstImageActivity?.imageMediaId
+                ? {
+                    kind: 'image' as const,
+                    src: getMediaStreamUrl(firstImageActivity.imageMediaId),
+                  }
+                : null
+
+          return { ...section, lessons, exercises, mediaPreview }
         }),
       )
 
@@ -3365,10 +4266,10 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
         </div>
       `
 
-      if (course.imageUrl) {
+      if (course.imageMediaId) {
         generalInfoContainer.innerHTML += `
           <div class="review-image-wrap">
-            <img src="${escapeHtml(course.imageUrl)}" alt="${escapeHtml(course.title)}" class="review-cover-image">
+            <img src="${escapeHtml(getMediaStreamUrl(course.imageMediaId))}" alt="${escapeHtml(course.title)}" class="review-cover-image">
           </div>
         `
       }
@@ -3387,6 +4288,21 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
             </div>
             <h3>${escapeHtml(section.title)}</h3>
             ${section.description ? `<p>${escapeHtml(section.description)}</p>` : ''}
+            ${section.mediaPreview
+              ? section.mediaPreview.kind === 'video'
+                ? `
+                  <div class="review-section-media-wrap">
+                    <video class="review-section-media" controls preload="metadata" ${section.mediaPreview.poster ? `poster="${escapeHtml(section.mediaPreview.poster)}"` : ''}>
+                      <source src="${escapeHtml(section.mediaPreview.src)}">
+                    </video>
+                  </div>
+                `
+                : `
+                  <div class="review-section-media-wrap">
+                    <img src="${escapeHtml(section.mediaPreview.src)}" alt="${escapeHtml(section.title)}" class="review-section-media">
+                  </div>
+                `
+              : ''}
           </div>
         `)
         .join('')
@@ -3407,6 +4323,21 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
   })
   document.getElementById('review-save-draft-mobile')?.addEventListener('click', () => {
     void saveDraftAndExit()
+  })
+
+  container.querySelectorAll<HTMLButtonElement>('[data-course-step]').forEach((stepButton) => {
+    stepButton.addEventListener('click', () => {
+      const target = stepButton.dataset.courseStep
+
+      if (target === 'create') {
+        toCreate()
+        return
+      }
+
+      if (target === 'sections') {
+        toSections()
+      }
+    })
   })
 
   void loadReviewData()

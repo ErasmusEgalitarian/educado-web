@@ -5,6 +5,8 @@ import { routes } from '@/app/routes'
 import { renderHomePage } from '@/app/pages/HomePage'
 import { clearAccessToken, getCurrentUser } from '@/shared/api/auth-session'
 import { subscribeLanguage } from '@/shared/i18n'
+import { MediaBankPage } from '@/features/media'
+import { MediaTabs } from '@/features/media/components/MediaTabs'
 
 let currentLanguageListenerCleanup: (() => void) | null = null
 let closeDropdownListener: ((e: Event) => void) | null = null
@@ -54,7 +56,8 @@ function initializeApp() {
   const currentPath = window.location.pathname
   const isCreatorHome = currentPath === routes.home
   const isAdminHome = currentPath === routes.adminHome
-  const isAuthenticatedRoute = isCreatorHome || isAdminHome
+  const isMediaBank = currentPath === routes.mediaBank
+  const isAuthenticatedRoute = isCreatorHome || isAdminHome || isMediaBank
 
   const appHeader = document.querySelector('.app-header')
   const languageSwitcherContainer = document.getElementById('language-switcher')
@@ -113,9 +116,15 @@ function initializeApp() {
   if (!root) return
 
   if (isCreatorHome) {
+    MediaTabs.renderInHeader('courses', routes.home)
     renderHomePage(root, 'USER')
   } else if (isAdminHome) {
+    MediaTabs.renderInHeader('courses', routes.adminHome)
     renderHomePage(root, 'ADMIN')
+  } else if (isMediaBank) {
+    MediaTabs.renderInHeader('media-bank')
+    const mediaBankPage = new MediaBankPage(root)
+    mediaBankPage.init()
   } else {
     renderAuthLanding(root)
   }
@@ -126,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Only subscribe to language changes on authenticated routes
   const currentPath = window.location.pathname
-  const isAuthenticatedRoute = currentPath === routes.home || currentPath === routes.adminHome
+  const isAuthenticatedRoute = currentPath === routes.home || currentPath === routes.adminHome || currentPath === routes.mediaBank
   
   if (isAuthenticatedRoute) {
     if (currentLanguageListenerCleanup) {

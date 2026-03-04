@@ -18,7 +18,7 @@ export interface Course {
   title: string
   shortDescription: string
   description: string
-  imageUrl: string
+  imageMediaId: string
   difficulty: CourseDifficulty
   estimatedTime: string
   passingThreshold: number
@@ -44,8 +44,8 @@ export interface Section {
   id: string
   courseId: string
   title: string
-  videoUrl: string | null
-  thumbnailUrl: string | null
+  videoMediaId: string | null
+  thumbnailMediaId: string | null
   duration: number | null
   order: number
   createdAt: string
@@ -61,7 +61,7 @@ export interface Activity {
   pauseTimestamp: number | null
   textPages: string[] | null
   question: string | null
-  imageUrl: string | null
+  imageMediaId: string | null
   options: string[] | null
   correctAnswer: boolean | number | null
   icon: string | null
@@ -73,8 +73,8 @@ export type CreateSectionInput = {
   id: string
   courseId: string
   title: string
-  videoUrl?: string | null
-  thumbnailUrl?: string | null
+  videoMediaId?: string | null
+  thumbnailMediaId?: string | null
   duration?: number | null
   order: number
 }
@@ -90,7 +90,7 @@ export type CreateActivityInput = {
   pauseTimestamp?: number | null
   textPages?: string[]
   question?: string
-  imageUrl?: string
+  imageMediaId?: string | null
   options?: string[]
   correctAnswer?: boolean | number | null
   icon?: string
@@ -103,7 +103,7 @@ export type CreateCourseInput = Pick<
   | 'title'
   | 'description'
   | 'shortDescription'
-  | 'imageUrl'
+  | 'imageMediaId'
   | 'difficulty'
   | 'estimatedTime'
   | 'passingThreshold'

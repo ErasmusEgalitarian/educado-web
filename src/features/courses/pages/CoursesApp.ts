@@ -88,7 +88,7 @@ class CoursesApp {
       title: formData.get('title') as string,
       shortDescription: formData.get('shortDescription') as string,
       description: formData.get('description') as string,
-      imageUrl: formData.get('imageUrl') as string,
+      imageMediaId: formData.get('imageMediaId') as string,
       difficulty: formData.get('difficulty') as 'beginner' | 'intermediate' | 'advanced',
       estimatedTime: formData.get('estimatedTime') as string,
       passingThreshold: parseInt(formData.get('passingThreshold') as string),
