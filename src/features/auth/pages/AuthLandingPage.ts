@@ -11,8 +11,11 @@ type UserRole = 'USER' | 'ADMIN'
 export function renderAuthLanding(container: HTMLElement) {
   let currentStep: AuthFlowStep = 'auth'
   let pendingRegistrationUserId: string | null = null
+  let pendingRegistrationEmail: string | null = null
+  let pendingRegistrationPassword: string | null = null
   let shouldOpenRegisterAfterRender = false
   let showPendingApprovalOnLogin = false
+  let showEmailVerificationOnLogin = false
 
   const redirectToHome = (role: UserRole) => {
     const destination = role === 'ADMIN' ? routes.adminHome : routes.home
@@ -33,12 +36,20 @@ export function renderAuthLanding(container: HTMLElement) {
 
       AuthProfileStep(profileContainer, {
         registrationUserId: pendingRegistrationUserId,
+        registrationEmail: pendingRegistrationEmail,
         onBackToRegister: () => {
           openRegisterScreen()
         },
         onProfileSubmittedForReview: () => {
           currentStep = 'login'
           showPendingApprovalOnLogin = true
+          showEmailVerificationOnLogin = false
+          render()
+        },
+        onEmailVerificationRequired: () => {
+          currentStep = 'login'
+          showPendingApprovalOnLogin = false
+          showEmailVerificationOnLogin = true
           render()
         },
       })
@@ -63,12 +74,25 @@ export function renderAuthLanding(container: HTMLElement) {
       AuthLoginCard(loginContainer, {
         onBack: () => {
           currentStep = 'auth'
+          showEmailVerificationOnLogin = false
           render()
         },
         onOpenRegister: () => openRegisterScreen(),
         onLoginSuccess: (role) => redirectToHome(role),
         showPendingApprovalModal: showPendingApprovalOnLogin,
+        showEmailVerificationModal: showEmailVerificationOnLogin,
+        verificationUserId: pendingRegistrationUserId,
+        verificationEmail: pendingRegistrationEmail,
+        autoLoginEmail: pendingRegistrationEmail,
+        autoLoginPassword: pendingRegistrationPassword,
         onPendingApprovalModalClose: () => {
+          showPendingApprovalOnLogin = false
+        },
+        onEmailVerificationModalClose: () => {
+          showEmailVerificationOnLogin = false
+        },
+        onEmailVerified: () => {
+          showEmailVerificationOnLogin = false
           showPendingApprovalOnLogin = false
         },
       })
@@ -94,10 +118,13 @@ export function renderAuthLanding(container: HTMLElement) {
       onOpenLogin: () => {
         currentStep = 'login'
         showPendingApprovalOnLogin = false
+        showEmailVerificationOnLogin = false
         render()
       },
-      onRegistrationCompleted: (userId) => {
+      onRegistrationCompleted: (userId, email, password) => {
         pendingRegistrationUserId = userId
+        pendingRegistrationEmail = email
+        pendingRegistrationPassword = password
         currentStep = 'profile'
         render()
       },

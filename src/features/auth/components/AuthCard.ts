@@ -6,7 +6,11 @@ import { toast } from '@/shared/ui/toast'
 type AuthCardView = 'landing' | 'register'
 
 interface AuthCardOptions {
-  onRegistrationCompleted?: (userId: string) => void
+  onRegistrationCompleted?: (
+    userId: string,
+    email: string,
+    password: string
+  ) => void
   onOpenLogin?: () => void
 }
 
@@ -338,7 +342,11 @@ export function AuthCard(container: HTMLElement, options?: AuthCardOptions) {
           toast(t('auth.register.feedback.success'), 'success')
 
           if (options?.onRegistrationCompleted) {
-            options.onRegistrationCompleted(response.userId)
+            options.onRegistrationCompleted(
+              response.userId,
+              payload.email,
+              payload.password
+            )
             return
           }
 

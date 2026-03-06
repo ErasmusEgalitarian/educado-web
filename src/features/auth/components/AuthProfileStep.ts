@@ -31,8 +31,10 @@ interface ProfessionalEntry {
 
 interface AuthProfileStepOptions {
   registrationUserId?: string | null
+  registrationEmail?: string | null
   onBackToRegister: () => void
   onProfileSubmittedForReview?: () => void
+  onEmailVerificationRequired?: () => void
 }
 
 export function AuthProfileStep(container: HTMLElement, options: AuthProfileStepOptions) {
@@ -484,6 +486,12 @@ export function AuthProfileStep(container: HTMLElement, options: AuthProfileStep
 
         isConfirmationModalOpen = false
 
+        if (response.registrationStatus === 'PENDING_EMAIL_VERIFICATION') {
+          toast(t('auth.profile.verification.feedback.codeSent'), 'success')
+          options.onEmailVerificationRequired?.()
+          return
+        }
+
         if (response.registrationStatus === 'PENDING_REVIEW') {
           options.onProfileSubmittedForReview?.()
           return
@@ -576,7 +584,6 @@ export function AuthProfileStep(container: HTMLElement, options: AuthProfileStep
     const motivationComplete = isMotivationsComplete()
     const academicComplete = isAcademicComplete()
     const professionalComplete = isProfessionalComplete()
-
     container.innerHTML = `
       <section class="auth-profile-step">
         <div class="auth-profile-shell">

@@ -11,6 +11,58 @@ body {
     min-height: 100vh;
 }
 
+.app-global-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    background: rgba(248, 249, 250, 0.96);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.app-global-loader.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+body.app-booting .app-container {
+    visibility: hidden;
+}
+
+body.app-booting .app-global-loader {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.app-global-loader-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.app-global-loader-logo {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+    animation: app-loader-spin 1s linear infinite;
+}
+
+@keyframes app-loader-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(-360deg);
+    }
+}
+
 .app-container {
     min-height: 100vh;
     display: flex;
@@ -88,6 +140,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 10px;
+    cursor: pointer;
 }
 
 .logo-img {

@@ -125,7 +125,10 @@ export function renderHomePage(container: HTMLElement, role: HomeUserRole) {
 }
 
 function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
-  MediaTabs.renderInHeader('courses', role === 'ADMIN' ? routes.adminHome : routes.home)
+  MediaTabs.renderInHeader('courses', {
+    coursesPath: role === 'ADMIN' ? routes.adminHome : routes.home,
+    adminPath: role === 'ADMIN' ? routes.adminUsers : undefined,
+  })
 
   const currentUser = getCurrentUser()
   const displayName = currentUser ? `${currentUser.firstName} ${currentUser.lastName}`.trim() : 'User Name'
