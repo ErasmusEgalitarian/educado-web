@@ -7,6 +7,10 @@ import { clearAccessToken, getCurrentUser } from '@/shared/api/auth-session'
 import { subscribeLanguage } from '@/shared/i18n'
 import { MediaBankPage } from '@/features/media'
 import { MediaTabs } from '@/features/media/components/MediaTabs'
+import { hideAppLoader, showAppLoader } from '@/shared/ui/app-loader'
+import { renderAdminUsersPage } from '@/features/admin/pages/AdminUsersPage'
+import { renderAdminUserReviewPage } from '@/features/admin/pages/AdminUserReviewPage'
+import { renderAdminInstitutionsPage } from '@/features/admin/pages/AdminInstitutionsPage'
 
 let currentLanguageListenerCleanup: (() => void) | null = null
 let closeDropdownListener: ((e: Event) => void) | null = null
@@ -52,12 +56,40 @@ function setupDropdownToggle() {
   document.addEventListener('click', closeDropdownListener)
 }
 
-function initializeApp() {
+function setupHeaderLogoNavigation(isAuthenticatedRoute: boolean) {
+  const logo = document.querySelector('.logo') as HTMLElement | null
+  if (!logo) return
+
+  const currentUser = getCurrentUser()
+  const targetRoute = isAuthenticatedRoute ? (currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home) : '/'
+
+  logo.setAttribute('role', 'button')
+  logo.setAttribute('tabindex', '0')
+
+  logo.onclick = () => {
+    if (window.location.pathname === targetRoute) return
+    window.location.assign(targetRoute)
+  }
+
+  logo.onkeydown = (event: KeyboardEvent) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    if (window.location.pathname === targetRoute) return
+    window.location.assign(targetRoute)
+  }
+}
+
+async function initializeApp() {
   const currentPath = window.location.pathname
   const isCreatorHome = currentPath === routes.home
   const isAdminHome = currentPath === routes.adminHome
+  const isAdminUsers = currentPath === routes.adminUsers
+  const isAdminInstitutions = currentPath === routes.adminInstitutions
+  const isAdminUserReview = currentPath === routes.adminUserReview
   const isMediaBank = currentPath === routes.mediaBank
-  const isAuthenticatedRoute = isCreatorHome || isAdminHome || isMediaBank
+  const isAuthenticatedRoute = isCreatorHome || isAdminHome || isAdminUsers || isAdminInstitutions || isAdminUserReview || isMediaBank
+
+  setupHeaderLogoNavigation(isAuthenticatedRoute)
 
   const appHeader = document.querySelector('.app-header')
   const languageSwitcherContainer = document.getElementById('language-switcher')
@@ -116,33 +148,62 @@ function initializeApp() {
   if (!root) return
 
   if (isCreatorHome) {
-    MediaTabs.renderInHeader('courses', routes.home)
+    MediaTabs.renderInHeader('courses', { coursesPath: routes.home })
     renderHomePage(root, 'USER')
   } else if (isAdminHome) {
-    MediaTabs.renderInHeader('courses', routes.adminHome)
+    MediaTabs.renderInHeader('courses', { coursesPath: routes.adminHome, adminPath: routes.adminUsers })
     renderHomePage(root, 'ADMIN')
+  } else if (isAdminUsers) {
+    MediaTabs.renderInHeader('admin', { coursesPath: routes.adminHome, adminPath: routes.adminUsers })
+    renderAdminUsersPage(root)
+  } else if (isAdminInstitutions) {
+    MediaTabs.renderInHeader('admin', { coursesPath: routes.adminHome, adminPath: routes.adminUsers })
+    renderAdminInstitutionsPage(root)
+  } else if (isAdminUserReview) {
+    MediaTabs.renderInHeader('admin', { coursesPath: routes.adminHome, adminPath: routes.adminUsers })
+    renderAdminUserReviewPage(root)
   } else if (isMediaBank) {
-    MediaTabs.renderInHeader('media-bank')
+    const currentUser = getCurrentUser()
+    const coursesPath = currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home
+    const adminPath = currentUser?.role === 'ADMIN' ? routes.adminUsers : undefined
+    MediaTabs.renderInHeader('media-bank', { coursesPath, adminPath })
     const mediaBankPage = new MediaBankPage(root)
-    mediaBankPage.init()
+    await mediaBankPage.init()
   } else {
     renderAuthLanding(root)
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initializeApp()
+document.addEventListener('DOMContentLoaded', async () => {
+  showAppLoader()
+
+  try {
+    await initializeApp()
+  } finally {
+    await hideAppLoader()
+  }
   
   // Only subscribe to language changes on authenticated routes
   const currentPath = window.location.pathname
-  const isAuthenticatedRoute = currentPath === routes.home || currentPath === routes.adminHome || currentPath === routes.mediaBank
+  const isAuthenticatedRoute =
+    currentPath === routes.home ||
+    currentPath === routes.adminHome ||
+    currentPath === routes.adminUsers ||
+    currentPath === routes.adminInstitutions ||
+    currentPath === routes.adminUserReview ||
+    currentPath === routes.mediaBank
   
   if (isAuthenticatedRoute) {
     if (currentLanguageListenerCleanup) {
       currentLanguageListenerCleanup()
     }
-    currentLanguageListenerCleanup = subscribeLanguage(() => {
-      initializeApp()
+    currentLanguageListenerCleanup = subscribeLanguage(async () => {
+      showAppLoader()
+      try {
+        await initializeApp()
+      } finally {
+        await hideAppLoader()
+      }
     })
   }
 })

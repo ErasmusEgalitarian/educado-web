@@ -7,10 +7,81 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body.app-booting {
+      margin: 0;
+      background: #f8f9fa;
+    }
+
+    body.app-booting .app-container {
+      visibility: hidden;
+      opacity: 0;
+    }
+
+    .app-container {
+      opacity: 1;
+      transition: opacity 160ms ease;
+    }
+
+    .app-global-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      background: rgba(248, 249, 250, 0.96);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .app-global-loader.is-visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .app-global-loader-logo {
+      width: 88px;
+      height: 88px;
+      object-fit: contain;
+      animation: app-loader-spin 1s linear infinite;
+    }
+
+    @keyframes app-loader-spin {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(-360deg);
+      }
+    }
+
+    .logo-img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+    }
+
+    .logo-text {
+      font-family: 'Montserrat', 'Inter', sans-serif;
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 700;
+      color: #28363e;
+    }
+  </style>
   <title>EDUCADO</title>
 </head>
 
-<body>
+<body class="app-booting">
+  <div id="app-global-loader" class="app-global-loader is-visible" aria-live="polite" aria-label="Carregando aplicação">
+    <div class="app-global-loader-content">
+      <img src="/images/logo_black240.png" alt="EDUCADO" class="app-global-loader-logo">
+    </div>
+  </div>
+
   <div class="app-container">
     <header class="app-header public-header">
       <div class="header-content">

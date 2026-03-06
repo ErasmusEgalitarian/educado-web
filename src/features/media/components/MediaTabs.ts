@@ -1,29 +1,41 @@
 import { t } from '@/shared/i18n'
 
 export type MediaTabType = 'courses' | 'media-bank'
+export type AppTabType = MediaTabType | 'admin'
 
 interface MediaTabConfig {
-  id: MediaTabType
+  id: AppTabType
   label: string
   active: boolean
 }
 
+interface HeaderTabsOptions {
+  coursesPath?: string
+  mediaBankPath?: string
+  adminPath?: string
+}
+
 export class MediaTabs {
   private container: HTMLElement
-  private activeTab: MediaTabType = 'media-bank'
-  private onTabChange: ((tab: MediaTabType) => void) | null = null
+  private activeTab: AppTabType = 'media-bank'
+  private onTabChange: ((tab: AppTabType) => void) | null = null
+  private includeAdminTab = false
 
   constructor(container: HTMLElement) {
     this.container = container
   }
 
-  setOnTabChange(callback: (tab: MediaTabType) => void) {
+  setOnTabChange(callback: (tab: AppTabType) => void) {
     this.onTabChange = callback
   }
 
-  setActiveTab(tab: MediaTabType) {
+  setActiveTab(tab: AppTabType) {
     this.activeTab = tab
     this.render()
+  }
+
+  setIncludeAdminTab(value: boolean) {
+    this.includeAdminTab = value
   }
 
   render() {
@@ -31,6 +43,10 @@ export class MediaTabs {
       { id: 'courses', label: t('courses.home.mediaBank.headerTabs.courses'), active: this.activeTab === 'courses' },
       { id: 'media-bank', label: t('courses.home.mediaBank.headerTabs.mediaBank'), active: this.activeTab === 'media-bank' },
     ]
+
+    if (this.includeAdminTab) {
+      tabs.push({ id: 'admin', label: t('courses.home.mediaBank.headerTabs.admin'), active: this.activeTab === 'admin' })
+    }
 
     this.container.innerHTML = `
       <div class="tabs-component">
@@ -62,17 +78,24 @@ export class MediaTabs {
   /**
    * Static method to render tabs in the header with navigation
    */
-  static renderInHeader(activeTab: MediaTabType, coursesPath: string = '/home') {
+  static renderInHeader(activeTab: AppTabType, options: HeaderTabsOptions = {}) {
     const headerTabsContainer = document.querySelector('#header-tabs-container') as HTMLElement
     if (!headerTabsContainer) return
 
+    const coursesPath = options.coursesPath ?? '/home'
+    const mediaBankPath = options.mediaBankPath ?? '/media-bank'
+    const adminPath = options.adminPath
+
     const tabs = new MediaTabs(headerTabsContainer)
+    tabs.setIncludeAdminTab(Boolean(adminPath))
     tabs.setActiveTab(activeTab)
     tabs.setOnTabChange((tab) => {
       if (tab === 'courses') {
         window.location.href = coursesPath
       } else if (tab === 'media-bank') {
-        window.location.href = '/media-bank'
+        window.location.href = mediaBankPath
+      } else if (tab === 'admin' && adminPath) {
+        window.location.href = adminPath
       }
     })
     tabs.render()

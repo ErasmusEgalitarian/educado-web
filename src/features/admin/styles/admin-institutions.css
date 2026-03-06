@@ -1,0 +1,306 @@
+.admin-institutions-page {
+  min-height: calc(100vh - 88px);
+  padding: 24px;
+  background: #fafeff;
+}
+
+.admin-institutions-card {
+  height: 100%;
+  border-radius: 16px;
+  background: #fdfeff;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-institutions-top-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.admin-institutions-top-tab {
+  border: none;
+  border-bottom: 1px solid #809cad;
+  background: #fdfeff;
+  color: #809cad;
+  padding: 14px 24px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.admin-institutions-top-tab.is-active {
+  background: #35a1b1;
+  border-bottom-color: #35a1b1;
+  color: #fdfeff;
+  font-weight: 700;
+}
+
+.admin-institutions-filters-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.admin-institutions-filter {
+  width: min(220px, 100%);
+  border-radius: 8px;
+  border: 1px solid #c1cfd7;
+  background: #fdfeff;
+  padding: 10px;
+}
+
+.admin-institutions-filter-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #28363e;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+}
+
+.admin-institutions-btn-primary,
+.admin-institutions-btn-secondary {
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-institutions-btn-primary {
+  border: 1px solid #35a1b1;
+  background: #35a1b1;
+  color: #fdfeff;
+}
+
+.admin-institutions-btn-secondary {
+  border: 1px solid #c1cfd7;
+  background: #fdfeff;
+  color: #4e6879;
+}
+
+.admin-institutions-btn-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.admin-institutions-table-wrap {
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid #e4edf2;
+  border-radius: 12px;
+}
+
+.admin-institutions-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: 'Lato', sans-serif;
+  font-size: 15px;
+  color: #424242;
+}
+
+.admin-institutions-table th,
+.admin-institutions-table td {
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid #809cad;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin-institutions-table th {
+  color: #246670;
+  font-weight: 700;
+  border-bottom: 4px solid #246670;
+  background: #fdfeff;
+}
+
+.admin-institutions-empty {
+  text-align: center !important;
+  color: #628397;
+  font-family: 'Montserrat', sans-serif;
+  padding: 24px !important;
+}
+
+.admin-institutions-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-institutions-toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid #c1cfd7;
+  background: #e4edf2;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.admin-institutions-toggle.is-active {
+  background: #35a1b1;
+  border-color: #35a1b1;
+}
+
+.admin-institutions-toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-institutions-toggle-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fdfeff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transform: translateX(0);
+  transition: transform 0.2s ease;
+}
+
+.admin-institutions-toggle.is-active .admin-institutions-toggle-thumb {
+  transform: translateX(20px);
+}
+
+.admin-institutions-action-icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.admin-institutions-action-icon-btn img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.admin-institutions-action-icon-btn:hover {
+  background: rgba(38, 102, 112, 0.09);
+}
+
+.admin-institutions-delete-icon-btn:hover {
+  background: rgba(214, 43, 37, 0.08);
+}
+
+.admin-institutions-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(20, 27, 31, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.admin-institutions-modal {
+  width: min(560px, 100%);
+  border-radius: 16px;
+  border: 1px solid #c1cfd7;
+  background: #fdfeff;
+  box-shadow: 0 14px 36px rgba(20, 27, 31, 0.2);
+  padding: 20px;
+}
+
+.admin-institutions-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.admin-institutions-modal-header h2 {
+  color: #246670;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 20px;
+}
+
+.admin-institutions-modal-close {
+  border: none;
+  background: transparent;
+  color: #4e6879;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.admin-institutions-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-institutions-modal-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #246670;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-institutions-modal-form input {
+  border: 1px solid #c1cfd7;
+  border-radius: 8px;
+  height: 42px;
+  padding: 0 12px;
+  color: #28363e;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+}
+
+.admin-institutions-modal-form input:focus {
+  border-color: #35a1b1;
+  outline: 2px solid rgba(53, 161, 177, 0.15);
+}
+
+.admin-institutions-modal-error {
+  min-height: 18px;
+  color: #d62b25;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+}
+
+.admin-institutions-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .admin-institutions-page {
+    padding: 16px;
+  }
+
+  .admin-institutions-card {
+    padding: 16px;
+  }
+
+  .admin-institutions-filters-row {
+    flex-direction: column;
+  }
+
+  .admin-institutions-filter,
+  .admin-institutions-btn-primary {
+    width: 100%;
+  }
+}

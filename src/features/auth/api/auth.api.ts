@@ -1,7 +1,12 @@
 import { api } from '@/shared/api/http'
 import { setAccessToken, setCurrentUser } from '@/shared/api/auth-session'
 
-export type RegistrationStatus = 'DRAFT_PROFILE' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED'
+export type RegistrationStatus =
+  | 'DRAFT_PROFILE'
+  | 'PENDING_REVIEW'
+  | 'PENDING_EMAIL_VERIFICATION'
+  | 'APPROVED'
+  | 'REJECTED'
 
 export interface CreateRegistrationInput {
   firstName: string
@@ -41,11 +46,21 @@ export interface UpsertCandidateProfileInput {
 
 export interface UpsertCandidateProfileResponse {
   registrationStatus: RegistrationStatus
+  nextAction?: 'CONFIRM_EMAIL_CODE'
 }
 
 export interface RegistrationStatusResponse {
   status: RegistrationStatus
   reason?: string
+}
+
+export interface EmailVerificationSendResponse {
+  status: RegistrationStatus
+  nextAction: 'CONFIRM_EMAIL_CODE'
+}
+
+export interface EmailVerificationConfirmResponse {
+  status: RegistrationStatus
 }
 
 export interface AdminRegistrationSummary {
@@ -81,6 +96,12 @@ export const authApi = {
 
   upsertMyProfile: (payload: UpsertCandidateProfileInput) =>
     api.put<UpsertCandidateProfileResponse>('/auth/registrations/me/profile', payload, { auth: true }),
+
+  sendEmailVerificationCode: (userId: string) =>
+    api.post<EmailVerificationSendResponse>('/account/email-verification/send', { userId }),
+
+  confirmEmailVerificationCode: (userId: string, code: string) =>
+    api.post<EmailVerificationConfirmResponse>('/account/email-verification/confirm', { userId, code }),
 
   getMyStatus: () =>
     api.get<RegistrationStatusResponse>('/auth/registrations/me/status', { auth: true }),
