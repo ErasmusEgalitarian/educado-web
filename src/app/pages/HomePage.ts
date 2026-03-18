@@ -1,8 +1,8 @@
-import { getCurrentUser } from '@/shared/api/auth-session'
+import { getAccessToken, getCurrentUser } from '@/shared/api/auth-session'
 import { coursesApi } from '@/features/courses/api/courses.api'
 import { sectionsApi } from '@/features/courses/api/sections.api'
 import { activitiesApi } from '@/features/courses/api/activities.api'
-import type { Activity, ActivityType, Course, CreateCourseInput, Tag } from '@/features/courses/model/course.types'
+import type { Activity, ActivityType, Course, CreateCourseInput, Section, Tag } from '@/features/courses/model/course.types'
 import { tagsApi } from '@/features/courses/api/tags.api'
 import { mediaApi, type MediaResponse } from '@/features/media/api/media.api'
 import { ApiError } from '@/shared/api/http'
@@ -18,12 +18,13 @@ const COURSE_HOME_VIEW_STORAGE_KEY = 'educado.courses.homeView'
 const COURSE_HOME_DRAFT_STORAGE_KEY = 'educado.courses.draft'
 const COURSE_HOME_FORM_DRAFT_STORAGE_KEY = 'educado.courses.formDraft'
 const COURSE_HOME_SECTIONS_LOCAL_STORAGE_KEY = 'educado.courses.sectionsLocal'
-const MEDIA_ID_REGEX = /^[a-f\d]{24}$/i
+const MONGO_ID_REGEX = /^[a-f\d]{24}$/i
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 type MediaErrorContext = 'course' | 'exercise'
 
 function isValidMediaIdFormat(mediaId: string) {
-  return MEDIA_ID_REGEX.test(mediaId)
+  return MONGO_ID_REGEX.test(mediaId) || UUID_REGEX.test(mediaId)
 }
 
 function getMediaReferenceErrorMessage(error: unknown, context: MediaErrorContext) {
@@ -93,7 +94,9 @@ function getMediaBankErrorMessage(error: unknown, operation: 'upload' | 'list') 
 }
 
 function getMediaStreamUrl(mediaId: string) {
-  return `${import.meta.env.VITE_API_URL ?? 'http://localhost:5001'}/media/${mediaId}/stream`
+  const token = getAccessToken()
+  const base = `${import.meta.env.VITE_API_URL ?? 'http://localhost:5001'}/media/${mediaId}/stream`
+  return token ? `${base}?token=${token}` : base
 }
 
 function clearCourseTabsInHeader() {
@@ -114,6 +117,14 @@ export function renderHomePage(container: HTMLElement, role: HomeUserRole) {
     return
   }
 
+  if (currentView === 'edit') {
+    const editCourseId = sessionStorage.getItem('educado.editCourseId')
+    if (editCourseId) {
+      renderEditCourseScreen(container, role, editCourseId)
+      return
+    }
+  }
+
   if (currentView === 'review') {
     const rawDraft = sessionStorage.getItem(COURSE_HOME_DRAFT_STORAGE_KEY)
     const draft = rawDraft ? (JSON.parse(rawDraft) as Course | null) : null
@@ -122,6 +133,18 @@ export function renderHomePage(container: HTMLElement, role: HomeUserRole) {
   }
 
   renderCreatorHomePage(container, role)
+}
+
+async function renderEditCourseScreen(container: HTMLElement, role: HomeUserRole, courseId: string) {
+  try {
+    const course = await coursesApi.getCourse(courseId)
+    renderNewCourseScreen(container, role, course)
+  } catch {
+    toast(t('courses.home.feedback.actionError'), 'error')
+    sessionStorage.removeItem('educado.editCourseId')
+    sessionStorage.removeItem(COURSE_HOME_VIEW_STORAGE_KEY)
+    renderHomePage(container, role)
+  }
 }
 
 function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
@@ -319,10 +342,6 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
             <footer class="creator-course-actions">
               <button class="creator-edit-btn" type="button" data-course-action="edit" data-course-id="${escapeHtml(course.id)}">${t('courses.home.edit')}</button>
               <button class="creator-view-btn-card" type="button" data-course-action="view" data-course-id="${escapeHtml(course.id)}">${t('courses.home.view')}</button>
-              <button class="creator-action-btn ${isActive ? 'warning' : 'success'}" type="button" data-course-action="toggle" data-course-id="${escapeHtml(course.id)}" data-course-active="${isActive ? 'true' : 'false'}">
-                ${isActive ? t('courses.home.deactivate') : t('courses.home.activate')}
-              </button>
-              <button class="creator-action-btn danger" type="button" data-course-action="delete" data-course-id="${escapeHtml(course.id)}">${t('courses.home.delete')}</button>
             </footer>
           </article>
         `
@@ -332,46 +351,160 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
     bindCourseActionButtons()
   }
 
-  const buildUpdatePayload = (course: Course, title: string) => ({
-    title,
-    description: course.description,
-    shortDescription: course.shortDescription,
-    imageMediaId: course.imageMediaId,
-    difficulty: course.difficulty,
-    estimatedTime: course.estimatedTime,
-    passingThreshold: course.passingThreshold,
-    category: course.category,
-    tags: course.tags,
-    rating: course.rating ?? null,
-  })
-
   const handleViewCourse = async (courseId: string) => {
     try {
       const course = await coursesApi.getCourse(courseId)
-      toast(`${t('courses.home.feedback.viewSuccess')} ${course.title}`, 'success')
+
+      // Fetch sections for this course
+      const allSections = await sectionsApi.getSections()
+      const courseSections = allSections
+        .filter((s: Section) => s.courseId === courseId)
+        .sort((a: Section, b: Section) => a.order - b.order)
+
+      // Fetch activities for each section
+      const sectionActivities: Record<string, Activity[]> = {}
+      for (const section of courseSections) {
+        try {
+          const activities = await activitiesApi.getActivitiesBySection(section.id)
+          sectionActivities[section.id] = activities.sort((a: Activity, b: Activity) => a.order - b.order)
+        } catch {
+          sectionActivities[section.id] = []
+        }
+      }
+
+      showCourseViewModal(course, courseSections, sectionActivities)
     } catch {
       toast(t('courses.home.feedback.actionError'), 'error')
     }
   }
 
-  const handleEditCourse = async (courseId: string) => {
-    try {
-      const course = await coursesApi.getCourse(courseId)
-      const nextTitle = window.prompt(t('courses.home.feedback.editPrompt'), course.title)?.trim()
+  const showCourseViewModal = (course: Course, sections: Section[], sectionActivities: Record<string, Activity[]>) => {
+    const chevron = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`
 
-      if (!nextTitle || nextTitle === course.title) return
-
-      await coursesApi.updateCourse(courseId, buildUpdatePayload(course, nextTitle))
-      toast(t('courses.home.feedback.updateSuccess'), 'success')
-      await loadCourses()
-    } catch (error) {
-      const mediaErrorMessage = getMediaReferenceErrorMessage(error, 'course')
-      if (mediaErrorMessage) {
-        toast(mediaErrorMessage, 'error')
-        return
+    const getActivityIcon = (type: string) => {
+      switch (type) {
+        case 'video_pause': return '\u25B6'
+        case 'text_reading': return '\uD83D\uDCC4'
+        case 'multiple_choice': return '\u270E'
+        case 'true_false': return '\u2713\u2717'
+        default: return '\u2022'
       }
-      toast(t('courses.home.feedback.actionError'), 'error')
     }
+
+    const getActivityTypeName = (type: string) => {
+      switch (type) {
+        case 'video_pause': return 'V\u00EDdeo'
+        case 'text_reading': return 'Leitura'
+        case 'multiple_choice': return 'M\u00FAltipla Escolha'
+        case 'true_false': return 'Verdadeiro/Falso'
+        default: return type
+      }
+    }
+
+    const getDifficultyLabel = (d: string) => {
+      switch (d) {
+        case 'beginner': return 'Iniciante'
+        case 'intermediate': return 'Intermedi\u00E1rio'
+        case 'advanced': return 'Avan\u00E7ado'
+        default: return d
+      }
+    }
+
+    const modalWrapper = document.createElement('div')
+    modalWrapper.innerHTML = `
+      <div class="sections-lesson-modal-overlay" id="course-view-overlay">
+        <div class="sections-lesson-modal-card" style="max-width: 800px; max-height: calc(100vh - 80px); overflow-y: auto;">
+          <header class="sections-lesson-modal-header">
+            <h2>${escapeHtml(course.title)}</h2>
+            <button type="button" id="course-view-close" class="sections-lesson-modal-close" aria-label="Fechar">\u2715</button>
+          </header>
+
+          <div class="sections-lesson-modal-body">
+            <div class="course-view-info">
+              <div class="course-view-meta-row">
+                <span class="course-view-meta-item">\u2726 ${escapeHtml(course.category || '')}</span>
+                <span class="course-view-meta-item">\u25F7 ${escapeHtml(course.estimatedTime || '')}</span>
+                <span class="course-view-meta-item">\uD83D\uDCCA ${getDifficultyLabel(course.difficulty)}</span>
+                <span class="course-view-meta-item">${course.isActive ? '\uD83D\uDFE2 Ativo' : '\uD83D\uDD34 Inativo'}</span>
+              </div>
+              ${course.rating ? `<div class="course-view-rating">${renderRating(course.rating)}</div>` : ''}
+              ${course.description ? `<p class="course-view-description">${escapeHtml(course.description)}</p>` : ''}
+              ${course.reusableTags && course.reusableTags.length > 0 ? `
+                <div class="course-view-tags">
+                  ${course.reusableTags.map((tag: Tag) => `<span class="course-view-tag">${escapeHtml(tag.name)}</span>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="course-view-sections-wrap">
+              <h3 class="course-view-sections-title">Se\u00E7\u00F5es (${sections.length})</h3>
+              ${sections.length === 0 ? '<p class="course-view-empty">Nenhuma se\u00E7\u00E3o cadastrada.</p>' : ''}
+              ${sections.map((section: Section) => {
+                const activities = sectionActivities[section.id] || []
+                return `
+                  <div class="course-view-section-card">
+                    <button type="button" class="course-view-section-header" data-view-section-toggle="${section.id}">
+                      <span class="course-view-section-chevron">${chevron}</span>
+                      <span class="course-view-section-title">${escapeHtml(section.title)}</span>
+                      <small class="course-view-section-count">${activities.length} atividade${activities.length !== 1 ? 's' : ''}</small>
+                    </button>
+                    <div class="course-view-section-content" id="course-view-section-${section.id}" style="display: none;">
+                      ${activities.length === 0 ? '<p class="course-view-empty">Nenhuma atividade.</p>' : ''}
+                      ${activities.map((activity: Activity) => `
+                        <div class="course-view-activity">
+                          <span class="course-view-activity-icon">${getActivityIcon(activity.type)}</span>
+                          <div class="course-view-activity-info">
+                            <strong>${escapeHtml(activity.title || getActivityTypeName(activity.type))}</strong>
+                            <small>${getActivityTypeName(activity.type)}</small>
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                `
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+
+    document.body.appendChild(modalWrapper)
+
+    // Close handlers
+    const closeModal = () => modalWrapper.remove()
+
+    modalWrapper.querySelector('#course-view-close')?.addEventListener('click', closeModal)
+    modalWrapper.querySelector('#course-view-overlay')?.addEventListener('click', (e: Event) => {
+      if (e.target === e.currentTarget) closeModal()
+    })
+
+    // Section toggle (accordion)
+    modalWrapper.querySelectorAll<HTMLButtonElement>('[data-view-section-toggle]').forEach((btn: HTMLButtonElement) => {
+      btn.addEventListener('click', () => {
+        const sectionId = btn.dataset.viewSectionToggle
+        const content = document.getElementById(`course-view-section-${sectionId}`)
+        if (!content) return
+        const isOpen = content.style.display !== 'none'
+        content.style.display = isOpen ? 'none' : 'flex'
+        btn.querySelector('.course-view-section-chevron')?.classList.toggle('is-open', !isOpen)
+      })
+    })
+
+    // ESC to close
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeModal()
+        document.removeEventListener('keydown', handleEsc)
+      }
+    }
+    document.addEventListener('keydown', handleEsc)
+  }
+
+  const handleEditCourse = async (courseId: string) => {
+    sessionStorage.setItem('educado.editCourseId', courseId)
+    sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'edit')
+    renderEditCourseScreen(container, role, courseId)
   }
 
   const handleToggleCourseStatus = async (courseId: string, isActive: boolean) => {
@@ -529,9 +662,13 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
   loadCourses()
 }
 
-function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
+function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editCourse?: Course) {
   clearCourseTabsInHeader()
-  sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'create')
+  const isEditMode = Boolean(editCourse)
+
+  if (!isEditMode) {
+    sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'create')
+  }
 
   const nt = (path: string, params?: Record<string, string | number>) => t(`courses.newCourse.${path}`, params)
 
@@ -549,7 +686,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
       <div class="new-course-layout">
         <aside class="new-course-sidebar">
           <div class="new-course-sidebar-header">
-            <h2>${nt('title')}</h2>
+            <h2>${isEditMode ? t('courses.editCourse.title') : nt('title')}</h2>
             <div class="new-course-divider"></div>
           </div>
 
@@ -571,6 +708,15 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
           <div class="new-course-divider"></div>
 
           <button id="new-course-save-draft" class="new-course-outline-btn" type="button">${nt('saveDraft')}</button>
+          ${isEditMode && editCourse ? `
+            <div class="new-course-divider"></div>
+            <button id="edit-course-deactivate" class="new-course-outline-btn" type="button" style="border-color: #e0912d; color: #e0912d;">
+              ${editCourse.isActive !== false ? t('courses.editCourse.deactivate') : t('courses.editCourse.activate')}
+            </button>
+            <button id="edit-course-delete" class="new-course-outline-btn" type="button" style="border-color: #d62b25; color: #d62b25;">
+              ${t('courses.editCourse.deleteCourse')}
+            </button>
+          ` : ''}
         </aside>
 
         <div class="new-course-content">
@@ -668,6 +814,9 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
   let cancelModalOpen = false
 
   const goBackToDashboard = () => {
+    if (isEditMode) {
+      sessionStorage.removeItem('educado.editCourseId')
+    }
     sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'list')
     renderCreatorHomePage(container, role)
   }
@@ -717,19 +866,24 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
 
     const wrapper = document.createElement('div')
     wrapper.id = 'new-course-cancel-modal'
+    const modalTitleText = isEditMode ? t('courses.editCourse.cancelModal.title') : t('courses.sections.deleteModal.title')
+    const modalMessageText = isEditMode ? t('courses.editCourse.cancelModal.message') : t('courses.sections.deleteModal.message')
+    const modalCancelText = isEditMode ? t('courses.editCourse.cancelModal.cancel') : t('courses.sections.deleteModal.cancel')
+    const modalConfirmText = isEditMode ? t('courses.editCourse.cancelModal.confirm') : t('courses.sections.deleteModal.confirm')
+
     wrapper.innerHTML = `
       <div class="sections-lesson-modal-overlay" id="new-course-cancel-overlay" role="dialog" aria-modal="true" aria-labelledby="new-course-cancel-title">
         <div class="sections-lesson-modal-card sections-delete-modal-card">
           <header class="sections-lesson-modal-header">
-            <h2 id="new-course-cancel-title">${t('courses.sections.deleteModal.title')}</h2>
+            <h2 id="new-course-cancel-title">${modalTitleText}</h2>
             <button type="button" id="new-course-cancel-close" class="sections-lesson-modal-close" aria-label="${t('courses.sections.modal.close')}">✕</button>
           </header>
           <div class="sections-lesson-modal-body">
-            <p class="sections-delete-modal-message">${t('courses.sections.deleteModal.message')}</p>
+            <p class="sections-delete-modal-message">${modalMessageText}</p>
           </div>
           <footer class="sections-lesson-modal-actions">
-            <button type="button" id="new-course-cancel-no" class="new-course-cancel-btn">${t('courses.sections.deleteModal.cancel')}</button>
-            <button type="button" id="new-course-cancel-yes" class="new-course-primary-btn">${t('courses.sections.deleteModal.confirm')}</button>
+            <button type="button" id="new-course-cancel-no" class="new-course-cancel-btn">${modalCancelText}</button>
+            <button type="button" id="new-course-cancel-yes" class="new-course-primary-btn">${modalConfirmText}</button>
           </footer>
         </div>
       </div>
@@ -753,11 +907,12 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
         const rawCurrentDraft = sessionStorage.getItem(COURSE_HOME_DRAFT_STORAGE_KEY)
         const currentDraft = rawCurrentDraft ? (JSON.parse(rawCurrentDraft) as Course | null) : null
 
-        if (currentDraft?.id) {
+        if (currentDraft?.id && !isEditMode) {
           await deleteCourseWithDependents(currentDraft.id)
         }
 
         sessionStorage.removeItem(COURSE_HOME_DRAFT_STORAGE_KEY)
+        sessionStorage.removeItem('educado.editCourseId')
         clearCreationLocalDrafts()
         closeCancelCourseModal()
         goBackToDashboard()
@@ -919,7 +1074,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
     persistFormDraft()
   }
 
-  const submitNewCourse = async (mode: 'draft' | 'next') => {
+  const submitNewCourse = async (mode: 'draft' | 'next' | 'review') => {
     const title = titleInput?.value.trim() ?? ''
     const description = descriptionInput?.value.trim() ?? ''
     const difficulty = (difficultyInput?.value ?? 'beginner') as CreateCourseInput['difficulty']
@@ -972,6 +1127,58 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
       return
     }
 
+    if (isEditMode && editCourse) {
+      try {
+        const editPayload: CreateCourseInput = {
+          title,
+          description,
+          shortDescription: description.slice(0, 120),
+          imageMediaId,
+          difficulty,
+          estimatedTime: editCourse.estimatedTime || '8 horas',
+          passingThreshold: editCourse.passingThreshold ?? 70,
+          category,
+          tags: [],
+          tagIds,
+          rating: editCourse.rating ?? null,
+        }
+        const updatedCourse = await coursesApi.updateCourse(editCourse.id, editPayload)
+        sessionStorage.setItem(COURSE_HOME_DRAFT_STORAGE_KEY, JSON.stringify(updatedCourse))
+        persistFormDraft()
+        toast(t('courses.home.feedback.updateSuccess'), 'success')
+
+        if (mode === 'draft') {
+          await coursesApi.deactivateCourse(updatedCourse.id)
+          clearCreationLocalDrafts()
+          sessionStorage.removeItem('educado.editCourseId')
+          toast(t('courses.home.feedback.deactivateSuccess'), 'success')
+          goBackToDashboard()
+          return
+        }
+
+        if (mode === 'next') {
+          sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'sections')
+          renderCourseSectionsScreen(container, role, updatedCourse)
+          return
+        }
+
+        if (mode === 'review') {
+          sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'review')
+          renderCourseReviewScreen(container, role, updatedCourse)
+          return
+        }
+      } catch (error) {
+        const mediaErrorMessage = getMediaReferenceErrorMessage(error, 'course')
+        if (mediaErrorMessage) {
+          setFieldError(imageInput, mediaErrorMessage)
+          toast(mediaErrorMessage, 'error')
+          return
+        }
+        toast(t('courses.home.feedback.updateError'), 'error')
+      }
+      return
+    }
+
     try {
       const payload: CreateCourseInput = {
         title,
@@ -1009,6 +1216,12 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
         renderCourseSectionsScreen(container, role, upsertedCourse)
         return
       }
+
+      if (mode === 'review') {
+        sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'review')
+        renderCourseReviewScreen(container, role, upsertedCourse)
+        return
+      }
     } catch (error) {
       const mediaErrorMessage = getMediaReferenceErrorMessage(error, 'course')
       if (mediaErrorMessage) {
@@ -1020,11 +1233,11 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
     }
   }
 
-  if (titleInput) titleInput.value = formDraft?.title ?? draftCourse?.title ?? ''
-  if (descriptionInput) descriptionInput.value = formDraft?.description ?? draftCourse?.description ?? ''
-  if (difficultyInput) difficultyInput.value = formDraft?.difficulty ?? draftCourse?.difficulty ?? 'beginner'
-  if (categoryInput) categoryInput.value = formDraft?.category ?? draftCourse?.category ?? ''
-  if (imageInput) imageInput.value = formDraft?.imageMediaId ?? draftCourse?.imageMediaId ?? ''
+  if (titleInput) titleInput.value = formDraft?.title ?? draftCourse?.title ?? editCourse?.title ?? ''
+  if (descriptionInput) descriptionInput.value = formDraft?.description ?? draftCourse?.description ?? editCourse?.description ?? ''
+  if (difficultyInput) difficultyInput.value = formDraft?.difficulty ?? draftCourse?.difficulty ?? editCourse?.difficulty ?? 'beginner'
+  if (categoryInput) categoryInput.value = formDraft?.category ?? draftCourse?.category ?? editCourse?.category ?? ''
+  if (imageInput) imageInput.value = formDraft?.imageMediaId ?? draftCourse?.imageMediaId ?? editCourse?.imageMediaId ?? ''
 
   if (descriptionInput && descriptionCount) {
     descriptionCount.textContent = `${descriptionInput.value.length} / 400 caracteres`
@@ -1079,7 +1292,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
 
       const loadedItems = await Promise.all(
         response.items.map(async (item: MediaResponse) => {
-          const id = item._id ?? item.gridFsId
+          const id = item.id ?? item._id ?? item.gridFsId
           const blob = await mediaApi.streamMedia(id)
           const objectUrl = URL.createObjectURL(blob)
           previewUrls.add(objectUrl)
@@ -1225,7 +1438,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
 
           try {
             const uploadedBinary = await mediaApi.uploadImage({ file: selectedFile })
-            const uploadedId = uploadedBinary._id ?? uploadedBinary.gridFsId
+            const uploadedId = uploadedBinary.id ?? uploadedBinary._id ?? uploadedBinary.gridFsId
 
             if (!uploadedId) throw new Error('Missing media id')
 
@@ -1235,7 +1448,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
               description,
             })
 
-            imageInput.value = persisted._id ?? persisted.gridFsId
+            imageInput.value = persisted.id ?? persisted._id ?? persisted.gridFsId
             clearFieldError(imageInput)
             persistFormDraft()
             cleanup()
@@ -1405,27 +1618,51 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole) {
     await submitNewCourse('next')
   })
 
+  if (isEditMode && editCourse) {
+    document.getElementById('edit-course-deactivate')?.addEventListener('click', async () => {
+      try {
+        if (editCourse.isActive !== false) {
+          await coursesApi.deactivateCourse(editCourse.id)
+          toast(t('courses.home.feedback.deactivateSuccess'), 'success')
+        } else {
+          await coursesApi.activateCourse(editCourse.id)
+          toast(t('courses.home.feedback.activateSuccess'), 'success')
+        }
+        sessionStorage.removeItem('educado.editCourseId')
+        sessionStorage.removeItem(COURSE_HOME_VIEW_STORAGE_KEY)
+        renderHomePage(container, role)
+      } catch {
+        toast(t('courses.home.feedback.statusError'), 'error')
+      }
+    })
+
+    document.getElementById('edit-course-delete')?.addEventListener('click', async () => {
+      if (!window.confirm(t('courses.home.feedback.confirmDeleteCourse'))) return
+      try {
+        await coursesApi.deleteCourse(editCourse.id)
+        toast(t('courses.home.feedback.deleteSuccess'), 'success')
+        sessionStorage.removeItem('educado.editCourseId')
+        sessionStorage.removeItem(COURSE_HOME_VIEW_STORAGE_KEY)
+        renderHomePage(container, role)
+      } catch {
+        toast(t('courses.home.feedback.deleteError'), 'error')
+      }
+    })
+  }
+
   container.querySelectorAll<HTMLButtonElement>('[data-course-step]').forEach((stepButton) => {
     stepButton.addEventListener('click', () => {
       const target = stepButton.dataset.courseStep
 
       if (target === 'create') return
 
-      persistFormDraft()
-
       if (target === 'sections') {
-        const rawDraft = sessionStorage.getItem(COURSE_HOME_DRAFT_STORAGE_KEY)
-        const targetDraft = rawDraft ? (JSON.parse(rawDraft) as Course | null) : draftCourse
-        sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'sections')
-        renderCourseSectionsScreen(container, role, targetDraft)
+        void submitNewCourse('next')
         return
       }
 
       if (target === 'review') {
-        const rawDraft = sessionStorage.getItem(COURSE_HOME_DRAFT_STORAGE_KEY)
-        const targetDraft = rawDraft ? (JSON.parse(rawDraft) as Course | null) : draftCourse
-        sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'review')
-        renderCourseReviewScreen(container, role, targetDraft)
+        void submitNewCourse('review')
       }
     })
   })
@@ -1437,6 +1674,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
   const st = (path: string, params?: Record<string, string | number>) => t(`courses.sections.${path}`, params)
 
+  const isEditMode = Boolean(sessionStorage.getItem('educado.editCourseId'))
   const courseTitle = draftCourse?.title ?? st('defaultSectionTitle')
 
   container.innerHTML = `
@@ -1444,7 +1682,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       <div class="new-course-layout sections-layout">
         <aside class="new-course-sidebar">
           <div class="new-course-sidebar-header">
-            <h2>${t('courses.newCourse.title')}</h2>
+            <h2>${isEditMode ? t('courses.editCourse.title') : t('courses.newCourse.title')}</h2>
             <div class="new-course-divider"></div>
           </div>
 
@@ -1466,6 +1704,15 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
           <div class="new-course-divider"></div>
 
           <button id="sections-save-draft" class="new-course-outline-btn" type="button">${t('courses.newCourse.saveDraft')}</button>
+          ${isEditMode && draftCourse ? `
+            <div class="new-course-divider"></div>
+            <button id="sections-edit-deactivate" class="new-course-outline-btn" type="button" style="border-color: #e0912d; color: #e0912d;">
+              ${draftCourse.isActive !== false ? t('courses.editCourse.deactivate') : t('courses.editCourse.activate')}
+            </button>
+            <button id="sections-edit-delete" class="new-course-outline-btn" type="button" style="border-color: #d62b25; color: #d62b25;">
+              ${t('courses.editCourse.deleteCourse')}
+            </button>
+          ` : ''}
         </aside>
 
         <div class="new-course-content sections-content">
@@ -2026,19 +2273,24 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     document.removeEventListener('keydown', handleLessonModalKeydown)
     document.addEventListener('keydown', handleLessonModalKeydown)
 
+    const modalTitleText = isEditMode ? t('courses.editCourse.cancelModal.title') : st('cancelCourseModal.title')
+    const modalMessageText = isEditMode ? t('courses.editCourse.cancelModal.message') : st('cancelCourseModal.message')
+    const modalCancelText = isEditMode ? t('courses.editCourse.cancelModal.cancel') : st('cancelCourseModal.cancel')
+    const modalConfirmText = isEditMode ? t('courses.editCourse.cancelModal.confirm') : st('cancelCourseModal.confirm')
+
     modalPortal.innerHTML = `
       <div class="sections-lesson-modal-overlay" id="sections-cancel-course-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="sections-cancel-course-modal-title">
         <div class="sections-lesson-modal-card sections-delete-modal-card">
           <header class="sections-lesson-modal-header">
-            <h2 id="sections-cancel-course-modal-title">${st('cancelCourseModal.title')}</h2>
+            <h2 id="sections-cancel-course-modal-title">${modalTitleText}</h2>
             <button type="button" id="sections-cancel-course-modal-close" class="sections-lesson-modal-close" aria-label="${st('modal.close')}">✕</button>
           </header>
           <div class="sections-lesson-modal-body">
-            <p class="sections-delete-modal-message">${st('cancelCourseModal.message')}</p>
+            <p class="sections-delete-modal-message">${modalMessageText}</p>
           </div>
           <footer class="sections-lesson-modal-actions">
-            <button type="button" id="sections-cancel-course-modal-back" class="new-course-cancel-btn">${st('cancelCourseModal.cancel')}</button>
-            <button type="button" id="sections-cancel-course-modal-confirm" class="new-course-primary-btn">${st('cancelCourseModal.confirm')}</button>
+            <button type="button" id="sections-cancel-course-modal-back" class="new-course-cancel-btn">${modalCancelText}</button>
+            <button type="button" id="sections-cancel-course-modal-confirm" class="new-course-primary-btn">${modalConfirmText}</button>
           </footer>
         </div>
       </div>
@@ -2058,9 +2310,12 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
     confirmButton?.addEventListener('click', async () => {
       try {
-        await deleteDraftCourseWithDependents()
+        if (!isEditMode) {
+          await deleteDraftCourseWithDependents()
+        }
         sessionStorage.removeItem(COURSE_HOME_DRAFT_STORAGE_KEY)
         sessionStorage.removeItem(COURSE_HOME_FORM_DRAFT_STORAGE_KEY)
+        sessionStorage.removeItem('educado.editCourseId')
         clearSectionsLocalSnapshot()
         closeCancelCourseModal()
         toList({ clearDraft: true })
@@ -2088,6 +2343,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
       clearSectionsLocalSnapshot()
       sessionStorage.removeItem(COURSE_HOME_FORM_DRAFT_STORAGE_KEY)
+      sessionStorage.removeItem('educado.editCourseId')
       toast(t('courses.home.feedback.deactivateSuccess'), 'success')
       toList({ clearDraft: true })
     } catch {
@@ -2504,7 +2760,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
         const loadedItems = await Promise.all(
           response.items.map(async (item: MediaResponse) => {
-            const id = item._id ?? item.gridFsId
+            const id = item.id ?? item._id ?? item.gridFsId
             const blob = await mediaApi.streamMedia(id)
             const previewUrl = URL.createObjectURL(blob)
             previewUrls.add(previewUrl)
@@ -2668,7 +2924,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
             try {
               const uploadedBinary = await mediaApi.uploadVideo({ file: selectedFile })
-              const uploadedId = uploadedBinary._id ?? uploadedBinary.gridFsId
+              const uploadedId = uploadedBinary.id ?? uploadedBinary._id ?? uploadedBinary.gridFsId
 
               if (!uploadedId) throw new Error('Missing media id')
 
@@ -3145,7 +3401,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
         const loadedItems = await Promise.all(
           response.items.map(async (item: MediaResponse) => {
-            const id = item._id ?? item.gridFsId
+            const id = item.id ?? item._id ?? item.gridFsId
             const blob = await mediaApi.streamMedia(id)
             const previewUrl = URL.createObjectURL(blob)
             previewUrls.add(previewUrl)
@@ -3292,7 +3548,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
             try {
               const uploadedBinary = await mediaApi.uploadImage({ file: selectedFile })
-              const uploadedId = uploadedBinary._id ?? uploadedBinary.gridFsId
+              const uploadedId = uploadedBinary.id ?? uploadedBinary._id ?? uploadedBinary.gridFsId
 
               if (!uploadedId) throw new Error('Missing media id')
 
@@ -3898,8 +4154,14 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     }
 
     persistSectionsLocalSnapshot()
-    sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'create')
-    renderNewCourseScreen(container, role)
+    const editCourseId = sessionStorage.getItem('educado.editCourseId')
+    if (editCourseId) {
+      sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'edit')
+      renderEditCourseScreen(container, role, editCourseId)
+    } else {
+      sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'create')
+      renderNewCourseScreen(container, role)
+    }
   }
 
   const toReview = async () => {
@@ -3934,6 +4196,39 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     void toReview()
   })
 
+  // Edit mode: deactivate/delete buttons in sidebar
+  if (isEditMode && draftCourse) {
+    document.getElementById('sections-edit-deactivate')?.addEventListener('click', async () => {
+      try {
+        if (draftCourse.isActive !== false) {
+          await coursesApi.deactivateCourse(draftCourse.id)
+          toast(t('courses.home.feedback.deactivateSuccess'), 'success')
+        } else {
+          await coursesApi.activateCourse(draftCourse.id)
+          toast(t('courses.home.feedback.activateSuccess'), 'success')
+        }
+        sessionStorage.removeItem('educado.editCourseId')
+        sessionStorage.removeItem(COURSE_HOME_VIEW_STORAGE_KEY)
+        renderHomePage(container, role)
+      } catch {
+        toast(t('courses.home.feedback.statusError'), 'error')
+      }
+    })
+
+    document.getElementById('sections-edit-delete')?.addEventListener('click', async () => {
+      if (!window.confirm(t('courses.home.feedback.confirmDeleteCourse'))) return
+      try {
+        await coursesApi.deleteCourse(draftCourse.id)
+        toast(t('courses.home.feedback.deleteSuccess'), 'success')
+        sessionStorage.removeItem('educado.editCourseId')
+        sessionStorage.removeItem(COURSE_HOME_VIEW_STORAGE_KEY)
+        renderHomePage(container, role)
+      } catch {
+        toast(t('courses.home.feedback.deleteError'), 'error')
+      }
+    })
+  }
+
   container.querySelectorAll<HTMLButtonElement>('[data-course-step]').forEach((stepButton) => {
     stepButton.addEventListener('click', () => {
       const target = stepButton.dataset.courseStep
@@ -3961,6 +4256,7 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
   const rr = (path: string, params?: Record<string, string | number>) => t(`courses.review.${path}`, params)
   const ns = (path: string, params?: Record<string, string | number>) => t(`courses.newCourse.${path}`, params)
 
+  const isEditMode = Boolean(sessionStorage.getItem('educado.editCourseId'))
   const draftCourseId = draftCourse?.id ?? ''
   const getSectionsLocalKey = () => `${COURSE_HOME_SECTIONS_LOCAL_STORAGE_KEY}:${draftCourseId || 'local'}`
 
@@ -3969,7 +4265,7 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
       <div class="new-course-layout sections-layout">
         <aside class="new-course-sidebar">
           <div class="new-course-sidebar-header">
-            <h2>${ns('title')}</h2>
+            <h2>${isEditMode ? t('courses.editCourse.title') : ns('title')}</h2>
             <div class="new-course-divider"></div>
           </div>
 
@@ -3991,6 +4287,15 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
           <div class="new-course-divider"></div>
 
           <button id="review-save-draft" class="new-course-outline-btn" type="button">${ns('saveDraft')}</button>
+          ${isEditMode && draftCourse ? `
+            <div class="new-course-divider"></div>
+            <button id="review-edit-deactivate" class="new-course-outline-btn" type="button" style="border-color: #e0912d; color: #e0912d;">
+              ${draftCourse.isActive !== false ? t('courses.editCourse.deactivate') : t('courses.editCourse.activate')}
+            </button>
+            <button id="review-edit-delete" class="new-course-outline-btn" type="button" style="border-color: #d62b25; color: #d62b25;">
+              ${t('courses.editCourse.deleteCourse')}
+            </button>
+          ` : ''}
         </aside>
 
         <div class="new-course-content review-content">
@@ -4063,8 +4368,14 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
   }
 
   const toCreate = () => {
-    sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'create')
-    renderNewCourseScreen(container, role)
+    const editCourseId = sessionStorage.getItem('educado.editCourseId')
+    if (editCourseId) {
+      sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'edit')
+      renderEditCourseScreen(container, role, editCourseId)
+    } else {
+      sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'create')
+      renderNewCourseScreen(container, role)
+    }
   }
 
   const deleteCourseWithDependents = async (courseId: string) => {
@@ -4094,19 +4405,24 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
 
     const wrapper = document.createElement('div')
     wrapper.id = 'review-cancel-modal'
+    const modalTitleText = isEditMode ? t('courses.editCourse.cancelModal.title') : t('courses.sections.cancelCourseModal.title')
+    const modalMessageText = isEditMode ? t('courses.editCourse.cancelModal.message') : t('courses.sections.cancelCourseModal.message')
+    const modalCancelText = isEditMode ? t('courses.editCourse.cancelModal.cancel') : t('courses.sections.cancelCourseModal.cancel')
+    const modalConfirmText = isEditMode ? t('courses.editCourse.cancelModal.confirm') : t('courses.sections.cancelCourseModal.confirm')
+
     wrapper.innerHTML = `
       <div class="sections-lesson-modal-overlay" id="review-cancel-overlay" role="dialog" aria-modal="true" aria-labelledby="review-cancel-title">
         <div class="sections-lesson-modal-card sections-delete-modal-card">
           <header class="sections-lesson-modal-header">
-            <h2 id="review-cancel-title">${t('courses.sections.cancelCourseModal.title')}</h2>
+            <h2 id="review-cancel-title">${modalTitleText}</h2>
             <button type="button" id="review-cancel-close" class="sections-lesson-modal-close" aria-label="${t('courses.sections.modal.close')}">✕</button>
           </header>
           <div class="sections-lesson-modal-body">
-            <p class="sections-delete-modal-message">${t('courses.sections.cancelCourseModal.message')}</p>
+            <p class="sections-delete-modal-message">${modalMessageText}</p>
           </div>
           <footer class="sections-lesson-modal-actions">
-            <button type="button" id="review-cancel-no" class="new-course-cancel-btn">${t('courses.sections.cancelCourseModal.cancel')}</button>
-            <button type="button" id="review-cancel-yes" class="new-course-primary-btn">${t('courses.sections.cancelCourseModal.confirm')}</button>
+            <button type="button" id="review-cancel-no" class="new-course-cancel-btn">${modalCancelText}</button>
+            <button type="button" id="review-cancel-yes" class="new-course-primary-btn">${modalConfirmText}</button>
           </footer>
         </div>
       </div>
@@ -4130,11 +4446,12 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
         const rawCurrentDraft = sessionStorage.getItem(COURSE_HOME_DRAFT_STORAGE_KEY)
         const currentDraft = rawCurrentDraft ? (JSON.parse(rawCurrentDraft) as Course | null) : null
 
-        if (currentDraft?.id) {
+        if (currentDraft?.id && !isEditMode) {
           await deleteCourseWithDependents(currentDraft.id)
         }
 
         clearAllDrafts()
+        sessionStorage.removeItem('educado.editCourseId')
         closeCancelCourseModal()
         toList()
       } catch {
@@ -4153,6 +4470,7 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
       }
 
       clearAllDrafts()
+      sessionStorage.removeItem('educado.editCourseId')
       toast(t('courses.home.feedback.deactivateSuccess'), 'success')
       toList()
     } catch {
@@ -4172,6 +4490,7 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
 
       await coursesApi.activateCourse(currentDraft.id)
       clearAllDrafts()
+      sessionStorage.removeItem('educado.editCourseId')
       toast(rr('publishSuccess'), 'success')
       toList()
     } catch {
@@ -4245,7 +4564,7 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
                   }
                 : null
 
-          return { ...section, lessons, exercises, mediaPreview }
+          return { ...section, lessons, exercises, mediaPreview, activities }
         }),
       )
 
@@ -4272,7 +4591,7 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
       if (course.imageMediaId) {
         generalInfoContainer.innerHTML += `
           <div class="review-image-wrap">
-            <img src="${escapeHtml(getMediaStreamUrl(course.imageMediaId))}" alt="${escapeHtml(course.title)}" class="review-cover-image">
+            <img src="${getMediaStreamUrl(course.imageMediaId)}" alt="${escapeHtml(course.title)}" class="review-cover-image">
           </div>
         `
       }
@@ -4284,31 +4603,96 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
 
       sectionsContainer.innerHTML = sectionsWithCounts
         .map((section, index) => `
-          <div class="review-section-item">
+          <button type="button" class="review-section-toggle" data-review-section="${index}">
+            <span class="review-section-chevron">▾</span>
             <div class="review-section-head">
               <strong>${rr('sections.itemTitle', { index: index + 1 })}</strong>
               <span>${section.lessons} ${rr('sections.lessons')} • ${section.exercises} ${rr('sections.exercises')}</span>
             </div>
             <h3>${escapeHtml(section.title)}</h3>
-            ${section.description ? `<p>${escapeHtml(section.description)}</p>` : ''}
-            ${section.mediaPreview
-              ? section.mediaPreview.kind === 'video'
+          </button>
+          <div class="review-section-body" id="review-section-body-${index}" style="display: none;">
+            ${section.description ? `<p class="review-section-desc">${escapeHtml(section.description)}</p>` : ''}
+            ${section.mediaPreview && section.mediaPreview.kind === 'video'
+              ? `
+                <div class="review-section-media-wrap">
+                  <video class="review-section-media" controls preload="metadata" ${section.mediaPreview.poster ? `poster="${section.mediaPreview.poster}"` : ''}>
+                    <source src="${section.mediaPreview.src}">
+                  </video>
+                </div>
+              `
+              : section.mediaPreview && section.mediaPreview.kind === 'image'
                 ? `
                   <div class="review-section-media-wrap">
-                    <video class="review-section-media" controls preload="metadata" ${section.mediaPreview.poster ? `poster="${escapeHtml(section.mediaPreview.poster)}"` : ''}>
-                      <source src="${escapeHtml(section.mediaPreview.src)}">
-                    </video>
+                    <img src="${section.mediaPreview.src}" alt="${escapeHtml(section.title)}" class="review-section-media">
                   </div>
                 `
-                : `
-                  <div class="review-section-media-wrap">
-                    <img src="${escapeHtml(section.mediaPreview.src)}" alt="${escapeHtml(section.title)}" class="review-section-media">
-                  </div>
-                `
-              : ''}
+                : ''
+            }
+            ${section.activities.length > 0 ? `
+              <div class="review-activities-list">
+                ${section.activities.sort((a: any, b: any) => a.order - b.order).map((activity: any) => {
+                  const typeLabel = activity.type === 'video_pause' ? 'Aula em Vídeo'
+                    : activity.type === 'text_reading' ? 'Leitura'
+                    : activity.type === 'multiple_choice' ? 'Múltipla Escolha'
+                    : activity.type === 'true_false' ? 'Verdadeiro/Falso'
+                    : activity.type
+                  const typeClass = activity.type === 'video_pause' ? 'is-video'
+                    : activity.type === 'text_reading' ? 'is-text'
+                    : 'is-exercise'
+                  const icon = activity.type === 'video_pause' ? '▶'
+                    : activity.type === 'text_reading' ? '📄'
+                    : '✎'
+
+                  return `
+                    <div class="review-activity-item">
+                      <span class="review-activity-icon ${typeClass}">${icon}</span>
+                      <div class="review-activity-info">
+                        <strong>${escapeHtml(activity.title || typeLabel)}</strong>
+                        <small>${typeLabel}</small>
+                      </div>
+                    </div>
+                    ${activity.type === 'video_pause' && activity.imageMediaId ? `
+                      <div class="review-section-media-wrap">
+                        <video class="review-section-media" controls preload="metadata">
+                          <source src="${getMediaStreamUrl(activity.imageMediaId)}">
+                        </video>
+                      </div>
+                    ` : ''}
+                  `
+                }).join('')}
+              </div>
+            ` : ''}
           </div>
         `)
         .join('')
+
+      // Accordion behavior — one section open at a time
+      sectionsContainer.querySelectorAll<HTMLButtonElement>('.review-section-toggle').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = btn.dataset.reviewSection
+          const body = document.getElementById(`review-section-body-${idx}`)
+          if (!body) return
+
+          const isOpen = body.style.display !== 'none'
+
+          // Close all
+          sectionsContainer.querySelectorAll<HTMLElement>('.review-section-body').forEach((el) => {
+            el.style.display = 'none'
+            // Pause any playing videos
+            el.querySelectorAll('video').forEach((v) => v.pause())
+          })
+          sectionsContainer.querySelectorAll('.review-section-toggle').forEach((b) => {
+            b.classList.remove('is-open')
+          })
+
+          // Toggle clicked
+          if (!isOpen) {
+            body.style.display = 'flex'
+            btn.classList.add('is-open')
+          }
+        })
+      })
     } catch {
       generalInfoContainer.innerHTML = `<div class="review-empty">${rr('loadError')}</div>`
       sectionsContainer.innerHTML = `<div class="review-empty">${rr('loadError')}</div>`
@@ -4327,6 +4711,39 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
   document.getElementById('review-save-draft-mobile')?.addEventListener('click', () => {
     void saveDraftAndExit()
   })
+
+  // Edit mode: deactivate/delete buttons in sidebar
+  if (isEditMode && draftCourse) {
+    document.getElementById('review-edit-deactivate')?.addEventListener('click', async () => {
+      try {
+        if (draftCourse.isActive !== false) {
+          await coursesApi.deactivateCourse(draftCourse.id)
+          toast(t('courses.home.feedback.deactivateSuccess'), 'success')
+        } else {
+          await coursesApi.activateCourse(draftCourse.id)
+          toast(t('courses.home.feedback.activateSuccess'), 'success')
+        }
+        sessionStorage.removeItem('educado.editCourseId')
+        sessionStorage.removeItem(COURSE_HOME_VIEW_STORAGE_KEY)
+        renderHomePage(container, role)
+      } catch {
+        toast(t('courses.home.feedback.statusError'), 'error')
+      }
+    })
+
+    document.getElementById('review-edit-delete')?.addEventListener('click', async () => {
+      if (!window.confirm(t('courses.home.feedback.confirmDeleteCourse'))) return
+      try {
+        await coursesApi.deleteCourse(draftCourse.id)
+        toast(t('courses.home.feedback.deleteSuccess'), 'success')
+        sessionStorage.removeItem('educado.editCourseId')
+        sessionStorage.removeItem(COURSE_HOME_VIEW_STORAGE_KEY)
+        renderHomePage(container, role)
+      } catch {
+        toast(t('courses.home.feedback.deleteError'), 'error')
+      }
+    })
+  }
 
   container.querySelectorAll<HTMLButtonElement>('[data-course-step]').forEach((stepButton) => {
     stepButton.addEventListener('click', () => {

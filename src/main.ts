@@ -3,14 +3,16 @@ import { renderAuthLanding } from '@/features/auth'
 import { mountLanguageSwitcher } from '@/shared/ui/languageSwitcher'
 import { routes } from '@/app/routes'
 import { renderHomePage } from '@/app/pages/HomePage'
-import { clearAccessToken, getCurrentUser } from '@/shared/api/auth-session'
-import { subscribeLanguage } from '@/shared/i18n'
+import { clearAccessToken, getAccessToken, getCurrentUser } from '@/shared/api/auth-session'
+import { subscribeLanguage, t } from '@/shared/i18n'
 import { MediaBankPage } from '@/features/media'
 import { MediaTabs } from '@/features/media/components/MediaTabs'
 import { hideAppLoader, showAppLoader } from '@/shared/ui/app-loader'
 import { renderAdminUsersPage } from '@/features/admin/pages/AdminUsersPage'
 import { renderAdminUserReviewPage } from '@/features/admin/pages/AdminUserReviewPage'
 import { renderAdminInstitutionsPage } from '@/features/admin/pages/AdminInstitutionsPage'
+import { renderEditProfilePage } from '@/features/auth/pages/EditProfilePage'
+import { renderDashboardPage } from '@/features/dashboard/pages/DashboardPage'
 
 let currentLanguageListenerCleanup: (() => void) | null = null
 let closeDropdownListener: ((e: Event) => void) | null = null
@@ -87,7 +89,9 @@ async function initializeApp() {
   const isAdminInstitutions = currentPath === routes.adminInstitutions
   const isAdminUserReview = currentPath === routes.adminUserReview
   const isMediaBank = currentPath === routes.mediaBank
-  const isAuthenticatedRoute = isCreatorHome || isAdminHome || isAdminUsers || isAdminInstitutions || isAdminUserReview || isMediaBank
+  const isDashboard = currentPath === routes.dashboard
+  const isProfile = currentPath === routes.profile
+  const isAuthenticatedRoute = isCreatorHome || isAdminHome || isAdminUsers || isAdminInstitutions || isAdminUserReview || isMediaBank || isDashboard || isProfile
 
   setupHeaderLogoNavigation(isAuthenticatedRoute)
 
@@ -106,6 +110,10 @@ async function initializeApp() {
       const email = user?.email ?? 'user@email.com'
       const initials = user ? `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase() : 'UN'
 
+      const avatarUrl = user?.avatarMediaId
+        ? `${import.meta.env.VITE_API_URL ?? 'http://localhost:5001'}/media/${user.avatarMediaId}/stream?token=${getAccessToken() ?? ''}`
+        : ''
+
       languageSwitcherContainer.innerHTML = `
         <div class="header-user-area">
           <img src="/icons/bell.png" alt="Notifications" class="header-bell-icon" width="24" height="24">
@@ -114,12 +122,24 @@ async function initializeApp() {
               <strong>${fullName}</strong>
               <small>${email}</small>
             </div>
-            <div class="header-user-avatar">${initials}</div>
+            <div class="header-user-avatar">${avatarUrl ? `<img src="${avatarUrl}" alt="${fullName}" class="header-avatar-img">` : initials}</div>
           </button>
           <div class="header-user-dropdown" role="menu" style="display: none;">
+            <div class="header-profile-card">
+              <div class="header-profile-avatar">
+                ${avatarUrl ? `<img src="${avatarUrl}" alt="${fullName}">` : `<span>${initials}</span>`}
+              </div>
+              <div class="header-profile-info">
+                <strong>${fullName}</strong>
+                <small>${email}</small>
+              </div>
+            </div>
+            <div class="header-dropdown-divider" aria-hidden="true"></div>
             <div id="header-language-switcher" class="header-dropdown-content"></div>
             <div class="header-dropdown-divider" aria-hidden="true"></div>
-            <button id="header-logout-btn" class="header-logout-btn" type="button">Sair</button>
+            <button id="header-edit-profile-btn" class="header-menu-btn" type="button">${t('common.editProfile')}</button>
+            <div class="header-dropdown-divider" aria-hidden="true"></div>
+            <button id="header-logout-btn" class="header-logout-btn" type="button">${t('common.logout')}</button>
           </div>
         </div>
       `
@@ -128,6 +148,11 @@ async function initializeApp() {
       if (headerLanguageSwitcher) {
         mountLanguageSwitcher(headerLanguageSwitcher)
       }
+
+      const headerEditProfileButton = document.getElementById('header-edit-profile-btn')
+      headerEditProfileButton?.addEventListener('click', () => {
+        window.location.assign(routes.profile)
+      })
 
       const headerLogoutButton = document.getElementById('header-logout-btn')
       headerLogoutButton?.addEventListener('click', () => {
@@ -169,6 +194,24 @@ async function initializeApp() {
     MediaTabs.renderInHeader('media-bank', { coursesPath, adminPath })
     const mediaBankPage = new MediaBankPage(root)
     await mediaBankPage.init()
+  } else if (isDashboard) {
+    const currentUser = getCurrentUser()
+    const coursesPath = currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home
+    const adminPath = currentUser?.role === 'ADMIN' ? routes.adminUsers : undefined
+    MediaTabs.renderInHeader('dashboard', { coursesPath, adminPath })
+    renderDashboardPage(root)
+  } else if (isProfile) {
+    const currentUser = getCurrentUser()
+    const coursesPath = currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home
+    const adminPath = currentUser?.role === 'ADMIN' ? routes.adminUsers : undefined
+    MediaTabs.renderInHeader('courses', { coursesPath, adminPath })
+    await renderEditProfilePage(root, {
+      onNavigateHome: () => {
+        history.pushState(null, '', currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home)
+        MediaTabs.renderInHeader('courses', { coursesPath, adminPath })
+        renderHomePage(root, currentUser?.role === 'ADMIN' ? 'ADMIN' : 'USER')
+      },
+    })
   } else {
     renderAuthLanding(root)
   }
@@ -191,7 +234,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentPath === routes.adminUsers ||
     currentPath === routes.adminInstitutions ||
     currentPath === routes.adminUserReview ||
-    currentPath === routes.mediaBank
+    currentPath === routes.mediaBank ||
+    currentPath === routes.dashboard ||
+    currentPath === routes.profile
   
   if (isAuthenticatedRoute) {
     if (currentLanguageListenerCleanup) {

@@ -1,6 +1,6 @@
 import { t } from '@/shared/i18n'
 
-export type MediaTabType = 'courses' | 'media-bank'
+export type MediaTabType = 'courses' | 'media-bank' | 'dashboard'
 export type AppTabType = MediaTabType | 'admin'
 
 interface MediaTabConfig {
@@ -12,6 +12,7 @@ interface MediaTabConfig {
 interface HeaderTabsOptions {
   coursesPath?: string
   mediaBankPath?: string
+  dashboardPath?: string
   adminPath?: string
 }
 
@@ -42,6 +43,7 @@ export class MediaTabs {
     const tabs: MediaTabConfig[] = [
       { id: 'courses', label: t('courses.home.mediaBank.headerTabs.courses'), active: this.activeTab === 'courses' },
       { id: 'media-bank', label: t('courses.home.mediaBank.headerTabs.mediaBank'), active: this.activeTab === 'media-bank' },
+      { id: 'dashboard', label: t('courses.home.mediaBank.headerTabs.dashboard'), active: this.activeTab === 'dashboard' },
     ]
 
     if (this.includeAdminTab) {
@@ -84,6 +86,7 @@ export class MediaTabs {
 
     const coursesPath = options.coursesPath ?? '/home'
     const mediaBankPath = options.mediaBankPath ?? '/media-bank'
+    const dashboardPath = options.dashboardPath ?? '/dashboard'
     const adminPath = options.adminPath
 
     const tabs = new MediaTabs(headerTabsContainer)
@@ -94,6 +97,8 @@ export class MediaTabs {
         window.location.href = coursesPath
       } else if (tab === 'media-bank') {
         window.location.href = mediaBankPath
+      } else if (tab === 'dashboard') {
+        window.location.href = dashboardPath
       } else if (tab === 'admin' && adminPath) {
         window.location.href = adminPath
       }

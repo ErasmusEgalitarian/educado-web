@@ -2,6 +2,8 @@ import { authApi } from '@/features/auth/api/auth.api'
 import { ApiError } from '@/shared/api/http'
 import { subscribeLanguage, t } from '@/shared/i18n'
 import { toast } from '@/shared/ui/toast'
+import { PasswordResetFlow } from './PasswordResetFlow'
+import '../styles/password-reset.css'
 
 type UserRole = 'USER' | 'ADMIN'
 
@@ -338,6 +340,31 @@ export function AuthLoginCard(container: HTMLElement, options: AuthLoginCardOpti
     registerLink?.addEventListener('click', (event) => {
       event.preventDefault()
       options.onOpenRegister()
+    })
+
+    // Forgot password
+    const forgotPasswordDiv = container.querySelector('.login-forgot-password')
+    forgotPasswordDiv?.addEventListener('click', async () => {
+      const email = emailInput?.value.trim() ?? ''
+      if (!email) {
+        toast(t('auth.login.errors.requiredField'), 'error')
+        return
+      }
+      toast(t('passwordReset.feedback.sendingCode'), 'loading')
+      try {
+        await authApi.requestPasswordReset(email)
+        toast(t('passwordReset.feedback.codeSent'), 'success')
+        const pwResetContainer = document.createElement('div')
+        document.body.appendChild(pwResetContainer)
+        PasswordResetFlow(pwResetContainer, {
+          context: 'login',
+          email,
+          onClose: () => { pwResetContainer.remove() },
+          onSuccess: () => { window.location.reload() },
+        })
+      } catch {
+        toast(t('passwordReset.feedback.resendError'), 'error')
+      }
     })
 
     waitingCloseButton?.addEventListener('click', () => {
