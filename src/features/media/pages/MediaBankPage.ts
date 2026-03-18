@@ -975,7 +975,7 @@ export class MediaBankPage {
   }
 
   private mapMediaResponseToItem(media: MediaResponse): MediaItem {
-    const id = media._id ?? media.gridFsId
+    const id = media.id ?? media._id ?? media.gridFsId
     const createdAt = new Date(media.createdAt)
     const safeCreatedAt = Number.isNaN(createdAt.getTime()) ? new Date(0) : createdAt
 
@@ -1104,7 +1104,7 @@ export class MediaBankPage {
     try {
       const uploadedKind = this.pendingUploadFile.type.startsWith('video/') ? 'video' : 'image'
       const uploadedBinary = await mediaApi.uploadMedia({ file: this.pendingUploadFile })
-      const uploadedId = uploadedBinary._id ?? uploadedBinary.gridFsId
+      const uploadedId = uploadedBinary.id ?? uploadedBinary._id ?? uploadedBinary.gridFsId
 
       if (!uploadedId) {
         throw new Error('Missing media id from upload response')

@@ -35,6 +35,7 @@ export interface LoginResponse {
     email: string
     role: 'USER' | 'ADMIN'
     status: RegistrationStatus
+    avatarMediaId?: string | null
   }
 }
 
@@ -80,6 +81,25 @@ export interface RejectRegistrationInput {
   notes?: string
 }
 
+export interface UserProfile {
+  firstName: string
+  lastName: string
+  email: string
+  motivations: string | null
+  academicBackground: string | null
+  professionalExperience: string | null
+  avatarMediaId: string | null
+}
+
+export interface UpdateProfileInput {
+  firstName?: string
+  lastName?: string
+  email?: string
+  motivations?: string
+  academicBackground?: string
+  professionalExperience?: string
+}
+
 export const authApi = {
   register: (payload: CreateRegistrationInput) =>
     api.post<CreateRegistrationResponse>('/auth/registrations', payload),
@@ -114,4 +134,31 @@ export const authApi = {
 
   rejectRegistration: (userId: string, payload: RejectRegistrationInput) =>
     api.post<{ registrationStatus: RegistrationStatus }>(`/admin/registrations/${userId}/reject`, payload, { auth: true }),
+
+  getMyProfile: () =>
+    api.get<UserProfile>('/me/profile', { auth: true }),
+
+  updateMyProfile: (payload: UpdateProfileInput) =>
+    api.put<UserProfile>('/me/profile', payload, { auth: true }),
+
+  deleteMyAccount: () =>
+    api.del<void>('/me/account', { auth: true }),
+
+  updateMyAvatar: (mediaId: string) =>
+    api.put<{ avatarMediaId: string }>('/me/avatar', { mediaId }, { auth: true }),
+
+  removeMyAvatar: () =>
+    api.del<void>('/me/avatar', { auth: true }),
+
+  requestPasswordReset: (email: string) =>
+    api.post<{ sent: boolean }>('/auth/password-reset/request', { email }),
+
+  verifyPasswordResetCode: (email: string, code: string) =>
+    api.post<{ verified: boolean }>('/auth/password-reset/verify', { email, code }),
+
+  resetPassword: (payload: { email: string; code: string; newPassword: string; confirmPassword: string }) =>
+    api.post<{ reset: boolean }>('/auth/password-reset/reset', payload),
+
+  requestMyPasswordResetCode: () =>
+    api.post<{ sent: boolean }>('/me/password/request-code', undefined, { auth: true }),
 }

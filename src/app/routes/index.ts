@@ -6,4 +6,6 @@ export const routes = {
   adminUserReview: '/admin/users/review',
   courseEditor: '/course-editor',
   mediaBank: '/media-bank',
+  dashboard: '/dashboard',
+  profile: '/profile',
 }

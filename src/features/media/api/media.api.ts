@@ -5,6 +5,7 @@ export type MediaKind = 'image' | 'video'
 export type MediaStatus = 'ACTIVE' | 'INACTIVE'
 
 export interface MediaResponse {
+  id?: string
   _id?: string
   ownerId: string
   kind: MediaKind

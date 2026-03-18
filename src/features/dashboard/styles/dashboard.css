@@ -1,0 +1,441 @@
+.dashboard-page {
+  background: #fafeff;
+  min-height: 100vh;
+  padding: 40px 0;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.dashboard-content {
+  max-width: 1256px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* ── Header Section ── */
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+.dashboard-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dashboard-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #141b1f;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.dashboard-subtitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: #4e6879;
+  margin: 0;
+}
+
+/* ── Filters Row ── */
+.dashboard-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.dashboard-filter-select {
+  appearance: none;
+  background: #fdfeff;
+  border: 1px solid #c1cfd7;
+  border-radius: 8px;
+  padding: 10px 36px 10px 14px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #28363e;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23628397' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  min-width: 160px;
+}
+
+.dashboard-filter-select:focus {
+  outline: none;
+  border-color: #35a1b1;
+}
+
+.dashboard-export-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  background: #fdfeff;
+  border: 1px solid #c1cfd7;
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #28363e;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.dashboard-export-btn:hover {
+  border-color: #809cad;
+}
+
+.dashboard-export-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* ── Metric Cards Row ── */
+.dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px;
+  margin-bottom: 32px;
+}
+
+.metric-card {
+  background: #fdfeff;
+  border: 1px solid #c1cfd7;
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0px 4px 4px rgba(40, 54, 62, 0.08);
+}
+
+.metric-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.metric-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.metric-card-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.metric-card-icon.purple {
+  background: #e4ccff;
+}
+
+.metric-card-icon.yellow {
+  background: #fae0c3;
+}
+
+.metric-card-icon.green {
+  background: #e6fac8;
+}
+
+.metric-card-icon.teal {
+  background: #d8eff3;
+}
+
+.metric-card-trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.metric-card-trend.up {
+  color: #70a31f;
+}
+
+.metric-card-trend.down {
+  color: #d62b25;
+}
+
+.metric-card-trend.neutral {
+  color: #628397;
+}
+
+.metric-card-trend svg {
+  width: 16px;
+  height: 16px;
+}
+
+.metric-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-card-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #141b1f;
+  line-height: 1.2;
+}
+
+.metric-card-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #28363e;
+}
+
+.metric-card-caption {
+  font-size: 12px;
+  font-weight: 400;
+  color: #628397;
+}
+
+/* ── Charts Row ── */
+.dashboard-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.chart-card {
+  background: #fdfeff;
+  border: 1px solid #c1cfd7;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0px 4px 4px rgba(40, 54, 62, 0.08);
+}
+
+.chart-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #141b1f;
+  margin: 0 0 24px 0;
+}
+
+/* ── Vertical Bar Chart (Ratings Distribution) ── */
+.vbar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  height: 200px;
+  padding-bottom: 32px;
+  position: relative;
+}
+
+.vbar-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.vbar-bar {
+  width: 100%;
+  max-width: 56px;
+  border-radius: 6px 6px 0 0;
+  background: #35a1b1;
+  transition: height 0.3s ease;
+  min-height: 4px;
+}
+
+.vbar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #628397;
+  white-space: nowrap;
+}
+
+.vbar-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: #28363e;
+}
+
+/* ── Horizontal Bar Chart (What students liked) ── */
+.hbar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hbar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hbar-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hbar-row-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #28363e;
+}
+
+.hbar-row-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #141b1f;
+}
+
+.hbar-track {
+  width: 100%;
+  height: 12px;
+  background: #e8f0f4;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.hbar-fill {
+  height: 100%;
+  background: #35a1b1;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+/* ── Comments Section ── */
+.dashboard-comments-card {
+  background: #fdfeff;
+  border: 1px solid #c1cfd7;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0px 4px 4px rgba(40, 54, 62, 0.08);
+}
+
+.dashboard-comments-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.dashboard-comments-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #141b1f;
+  margin: 0;
+}
+
+.dashboard-comments-filter {
+  appearance: none;
+  background: #fdfeff;
+  border: 1px solid #c1cfd7;
+  border-radius: 8px;
+  padding: 8px 36px 8px 14px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #28363e;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23628397' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.dashboard-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.comment-card {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: #fafeff;
+  border: 1px solid #e8f0f4;
+  border-radius: 8px;
+}
+
+.comment-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #35a1b1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fdfeff;
+}
+
+.comment-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comment-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comment-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #141b1f;
+}
+
+.comment-date {
+  font-size: 12px;
+  font-weight: 400;
+  color: #628397;
+}
+
+.comment-course {
+  font-size: 12px;
+  font-weight: 400;
+  color: #628397;
+}
+
+.comment-stars {
+  display: flex;
+  gap: 2px;
+  margin: 4px 0;
+}
+
+.comment-stars svg {
+  width: 16px;
+  height: 16px;
+}
+
+.comment-text {
+  font-size: 13px;
+  font-weight: 400;
+  color: #28363e;
+  line-height: 1.5;
+}
+
+/* ── No data state ── */
+.dashboard-no-data {
+  text-align: center;
+  padding: 48px 24px;
+  color: #628397;
+  font-size: 14px;
+  font-weight: 500;
+}

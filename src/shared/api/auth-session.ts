@@ -7,6 +7,7 @@ export interface AuthSessionUser {
   lastName: string
   email: string
   role: 'USER' | 'ADMIN'
+  avatarMediaId?: string | null
 }
 
 export function getAccessToken(): string | null {
