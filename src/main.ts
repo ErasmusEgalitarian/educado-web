@@ -105,10 +105,7 @@ function setupMobileSidebar(options: {
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#4e6879" stroke-width="2" stroke-linecap="round"><line x1="4" y1="4" x2="16" y2="16"/><line x1="16" y1="4" x2="4" y2="16"/></svg>
         </button>
       </div>
-      <nav class="mobile-sidebar-nav">
-        ${navItems}
-      </nav>
-      <div class="mobile-sidebar-divider"></div>
+
       <div class="mobile-sidebar-user">
         <div class="mobile-sidebar-avatar">
           ${options.avatarUrl ? `<img src="${options.avatarUrl}" alt="${options.fullName}">` : `<span>${options.initials}</span>`}
@@ -118,12 +115,18 @@ function setupMobileSidebar(options: {
           <small>${options.email}</small>
         </div>
       </div>
-      <div class="mobile-sidebar-divider"></div>
       <div id="mobile-sidebar-language-switcher" class="mobile-sidebar-section"></div>
-      <div class="mobile-sidebar-divider"></div>
       <button id="mobile-sidebar-edit-profile" class="mobile-sidebar-btn" type="button">${t('common.editProfile')}</button>
+
       <div class="mobile-sidebar-divider"></div>
-      <button id="mobile-sidebar-logout" class="mobile-sidebar-logout-btn" type="button">${t('common.logout')}</button>
+
+      <nav class="mobile-sidebar-nav">
+        ${navItems}
+      </nav>
+
+      <div class="mobile-sidebar-footer">
+        <button id="mobile-sidebar-logout" class="mobile-sidebar-logout-btn" type="button">${t('common.logout')}</button>
+      </div>
     </aside>
   `
   document.body.appendChild(overlay)
@@ -149,6 +152,21 @@ function setupMobileSidebar(options: {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeSidebar()
   })
+
+  // On mobile, clicking user avatar/name in header opens sidebar instead of dropdown
+  const userButton = document.querySelector('.header-user-button') as HTMLElement | null
+  if (userButton) {
+    userButton.addEventListener('click', (e) => {
+      if (window.innerWidth <= 768) {
+        e.stopPropagation()
+        e.preventDefault()
+        // Close dropdown if open
+        const dropdown = document.querySelector('.header-user-dropdown') as HTMLElement | null
+        if (dropdown) dropdown.style.display = 'none'
+        openSidebar()
+      }
+    }, true) // capture phase to run before dropdown handler
+  }
 
   document.getElementById('mobile-sidebar-edit-profile')?.addEventListener('click', () => {
     closeSidebar()
