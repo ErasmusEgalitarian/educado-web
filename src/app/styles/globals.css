@@ -2735,11 +2735,23 @@ body.sections-modal-open {
     }
 
     .header-user-area {
-        gap: 10px;
+        gap: 8px;
     }
 
-    .header-user-info {
-        display: none;
+    .header-user-info strong {
+        font-size: 12px;
+        max-width: 100px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .header-user-info small {
+        font-size: 10px;
+        max-width: 100px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .header-user-avatar {
@@ -2748,12 +2760,8 @@ body.sections-modal-open {
         font-size: 12px;
     }
 
-    /* Hide header tabs and user dropdown on mobile — sidebar replaces them */
+    /* Hide header tabs on mobile — sidebar replaces them */
     .header-center {
-        display: none;
-    }
-
-    .header-user-area {
         display: none;
     }
 
@@ -2762,11 +2770,7 @@ body.sections-modal-open {
     }
 
     .header-content {
-        grid-template-columns: auto 1fr;
-    }
-
-    .header-right {
-        display: none;
+        grid-template-columns: auto 1fr auto;
     }
 }
 
