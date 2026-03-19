@@ -293,6 +293,12 @@
 
   .admin-institutions-card {
     padding: 16px;
+    gap: 16px;
+  }
+
+  .admin-institutions-top-tab {
+    font-size: 15px;
+    padding: 12px 16px;
   }
 
   .admin-institutions-filters-row {
@@ -301,6 +307,32 @@
 
   .admin-institutions-filter,
   .admin-institutions-btn-primary {
+    width: 100%;
+  }
+
+  .admin-institutions-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-institutions-table {
+    min-width: 560px;
+  }
+
+  .admin-institutions-modal {
+    width: calc(100% - 16px);
+    padding: 16px;
+  }
+
+  .admin-institutions-modal-header h2 {
+    font-size: 18px;
+  }
+
+  .admin-institutions-modal-footer {
+    flex-direction: column;
+  }
+
+  .admin-institutions-modal-footer button {
     width: 100%;
   }
 }

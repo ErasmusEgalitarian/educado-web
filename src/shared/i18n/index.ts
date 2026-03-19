@@ -14,6 +14,8 @@ const translations: Record<Language, TranslationTree> = {
       english: 'English',
       editProfile: 'Editar Perfil',
       logout: 'Sair',
+      openMenu: 'Abrir menu',
+      closeMenu: 'Fechar menu',
     },
     auth: {
       hero: {
@@ -951,6 +953,8 @@ const translations: Record<Language, TranslationTree> = {
       english: 'English',
       editProfile: 'Edit Profile',
       logout: 'Log out',
+      openMenu: 'Open menu',
+      closeMenu: 'Close menu',
     },
     auth: {
       hero: {
