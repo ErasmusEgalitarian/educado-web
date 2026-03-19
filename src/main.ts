@@ -16,6 +16,7 @@ import { renderDashboardPage } from '@/features/dashboard/pages/DashboardPage'
 
 let currentLanguageListenerCleanup: (() => void) | null = null
 let closeDropdownListener: ((e: Event) => void) | null = null
+let closeMobileSidebarOnResize: (() => void) | null = null
 
 function setupDropdownToggle() {
   // Clean up previous listener
@@ -56,6 +57,124 @@ function setupDropdownToggle() {
   userButton.addEventListener('click', handleButtonClick)
   userDropdown.addEventListener('click', handleDropdownClick)
   document.addEventListener('click', closeDropdownListener)
+}
+
+function setupMobileSidebar(options: {
+  fullName: string
+  email: string
+  initials: string
+  avatarUrl: string
+  navTabs: { id: string; label: string; href: string; active: boolean }[]
+}) {
+  // Remove previous sidebar if any
+  document.querySelector('.mobile-sidebar-overlay')?.remove()
+  document.querySelector('.mobile-hamburger-btn')?.remove()
+
+  // Clean up previous resize listener
+  if (closeMobileSidebarOnResize) {
+    window.removeEventListener('resize', closeMobileSidebarOnResize)
+  }
+
+  const headerLeft = document.querySelector('.header-left')
+  if (!headerLeft) return
+
+  // Add hamburger button
+  const hamburger = document.createElement('button')
+  hamburger.className = 'mobile-hamburger-btn'
+  hamburger.type = 'button'
+  hamburger.setAttribute('aria-label', t('common.openMenu'))
+  hamburger.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#28363e" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`
+  headerLeft.insertBefore(hamburger, headerLeft.firstChild)
+
+  // Create sidebar overlay
+  const overlay = document.createElement('div')
+  overlay.className = 'mobile-sidebar-overlay'
+
+  const navItems = options.navTabs.map(tab => `
+    <a href="${tab.href}" class="mobile-sidebar-nav-item${tab.active ? ' is-active' : ''}">${tab.label}</a>
+  `).join('')
+
+  overlay.innerHTML = `
+    <aside class="mobile-sidebar">
+      <div class="mobile-sidebar-header">
+        <div class="logo">
+          <img src="/images/logo_black240.png" alt="EDUCADO" class="logo-img">
+          <span class="logo-text">EDUCADO</span>
+        </div>
+        <button class="mobile-sidebar-close" type="button" aria-label="${t('common.closeMenu')}">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#4e6879" stroke-width="2" stroke-linecap="round"><line x1="4" y1="4" x2="16" y2="16"/><line x1="16" y1="4" x2="4" y2="16"/></svg>
+        </button>
+      </div>
+      <nav class="mobile-sidebar-nav">
+        ${navItems}
+      </nav>
+      <div class="mobile-sidebar-divider"></div>
+      <div class="mobile-sidebar-user">
+        <div class="mobile-sidebar-avatar">
+          ${options.avatarUrl ? `<img src="${options.avatarUrl}" alt="${options.fullName}">` : `<span>${options.initials}</span>`}
+        </div>
+        <div class="mobile-sidebar-user-info">
+          <strong>${options.fullName}</strong>
+          <small>${options.email}</small>
+        </div>
+      </div>
+      <div class="mobile-sidebar-divider"></div>
+      <div id="mobile-sidebar-language-switcher" class="mobile-sidebar-section"></div>
+      <div class="mobile-sidebar-divider"></div>
+      <button id="mobile-sidebar-edit-profile" class="mobile-sidebar-btn" type="button">${t('common.editProfile')}</button>
+      <div class="mobile-sidebar-divider"></div>
+      <button id="mobile-sidebar-logout" class="mobile-sidebar-logout-btn" type="button">${t('common.logout')}</button>
+    </aside>
+  `
+  document.body.appendChild(overlay)
+
+  // Mount language switcher inside sidebar
+  const sidebarLangContainer = document.getElementById('mobile-sidebar-language-switcher')
+  if (sidebarLangContainer) {
+    mountLanguageSwitcher(sidebarLangContainer)
+  }
+
+  const openSidebar = () => {
+    overlay.classList.add('is-open')
+    document.body.style.overflow = 'hidden'
+  }
+
+  const closeSidebar = () => {
+    overlay.classList.remove('is-open')
+    document.body.style.overflow = ''
+  }
+
+  hamburger.addEventListener('click', openSidebar)
+  overlay.querySelector('.mobile-sidebar-close')?.addEventListener('click', closeSidebar)
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeSidebar()
+  })
+
+  document.getElementById('mobile-sidebar-edit-profile')?.addEventListener('click', () => {
+    closeSidebar()
+    window.location.assign(routes.profile)
+  })
+
+  document.getElementById('mobile-sidebar-logout')?.addEventListener('click', () => {
+    closeSidebar()
+    clearAccessToken()
+    window.location.assign('/')
+  })
+
+  // Close sidebar on ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('is-open')) {
+      closeSidebar()
+    }
+  })
+
+  // Close sidebar if window resizes past mobile breakpoint
+  closeMobileSidebarOnResize = () => {
+    if (window.innerWidth > 768 && overlay.classList.contains('is-open')) {
+      closeSidebar()
+    }
+  }
+  window.addEventListener('resize', closeMobileSidebarOnResize)
 }
 
 function setupHeaderLogoNavigation(isAuthenticatedRoute: boolean) {
@@ -164,6 +283,20 @@ async function initializeApp() {
       setTimeout(() => {
         setupDropdownToggle()
       }, 0)
+
+      // Build mobile sidebar nav tabs
+      const isAdmin = user?.role === 'ADMIN'
+      const coursesPath = isAdmin ? routes.adminHome : routes.home
+      const sidebarNavTabs: { id: string; label: string; href: string; active: boolean }[] = [
+        { id: 'courses', label: t('courses.home.mediaBank.headerTabs.courses'), href: coursesPath, active: isCreatorHome || isAdminHome || isProfile },
+        { id: 'media-bank', label: t('courses.home.mediaBank.headerTabs.mediaBank'), href: routes.mediaBank, active: isMediaBank },
+        { id: 'dashboard', label: t('courses.home.mediaBank.headerTabs.dashboard'), href: routes.dashboard, active: isDashboard },
+      ]
+      if (isAdmin) {
+        sidebarNavTabs.push({ id: 'admin', label: t('courses.home.mediaBank.headerTabs.admin'), href: routes.adminUsers, active: isAdminUsers || isAdminInstitutions || isAdminUserReview })
+      }
+
+      setupMobileSidebar({ fullName, email, initials, avatarUrl, navTabs: sidebarNavTabs })
     } else {
       mountLanguageSwitcher(languageSwitcherContainer)
     }
