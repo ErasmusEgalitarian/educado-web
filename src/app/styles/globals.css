@@ -2761,7 +2761,7 @@ body.sections-modal-open {
     }
 
     /* Hide header tabs on mobile — sidebar replaces them */
-    .header-center {
+    .private-header .header-center {
         display: none;
     }
 
@@ -2769,8 +2769,32 @@ body.sections-modal-open {
         display: flex;
     }
 
-    .header-content {
+    .private-header .header-content {
         grid-template-columns: auto 1fr auto;
+    }
+
+    /* Public header: logo left, language switcher right */
+    .public-header .header-content {
+        grid-template-columns: auto 1fr auto;
+    }
+
+    .public-header .header-center {
+        display: none;
+    }
+
+    .public-header .language-switcher {
+        display: inline-flex;
+        gap: 0;
+    }
+
+    .public-header .language-switcher-label {
+        display: none;
+    }
+
+    .public-header .language-switcher-select {
+        min-width: 110px;
+        height: 32px;
+        font-size: 13px;
     }
 }
 
