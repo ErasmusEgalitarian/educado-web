@@ -13,6 +13,18 @@ import { renderAdminUserReviewPage } from '@/features/admin/pages/AdminUserRevie
 import { renderAdminInstitutionsPage } from '@/features/admin/pages/AdminInstitutionsPage'
 import { renderEditProfilePage } from '@/features/auth/pages/EditProfilePage'
 import { renderDashboardPage } from '@/features/dashboard/pages/DashboardPage'
+import {
+  renderMyCoursesPage,
+  renderExplorePage,
+  renderProfilePage,
+  renderStudentEditProfilePage,
+  renderCertificatesPage,
+  renderLeaderboardPage,
+  renderRatingPage,
+  renderCourseDetailPage,
+  renderStudentRegisterPage,
+} from '@/features/student'
+import '@/features/student/styles/mobile.css'
 
 let currentLanguageListenerCleanup: (() => void) | null = null
 let closeDropdownListener: ((e: Event) => void) | null = null
@@ -227,6 +239,19 @@ async function initializeApp() {
   const isMediaBank = currentPath === routes.mediaBank
   const isDashboard = currentPath === routes.dashboard
   const isProfile = currentPath === routes.profile
+
+  // Student mobile routes
+  const isStudentRoute = currentPath.startsWith('/student/')
+  const isStudentRegister = currentPath === routes.studentRegister
+  const isStudentMyCourses = currentPath === routes.studentMyCourses
+  const isStudentExplore = currentPath === routes.studentExplore
+  const isStudentProfile = currentPath === routes.studentProfile
+  const isStudentCourseDetail = currentPath === routes.studentCourseDetail
+  const isStudentCertificates = currentPath === routes.studentCertificates
+  const isStudentLeaderboard = currentPath === routes.studentLeaderboard
+  const isStudentRating = currentPath === routes.studentRating
+  const isStudentEditProfile = currentPath === routes.studentEditProfile
+
   const isAuthenticatedRoute = isCreatorHome || isAdminHome || isAdminUsers || isAdminInstitutions || isAdminUserReview || isMediaBank || isDashboard || isProfile
 
   setupHeaderLogoNavigation(isAuthenticatedRoute)
@@ -362,6 +387,33 @@ async function initializeApp() {
         renderHomePage(root, currentUser?.role === 'ADMIN' ? 'ADMIN' : 'USER')
       },
     })
+  } else if (isStudentRoute) {
+    // Student mobile routes — hide desktop header
+    const appHeader = document.querySelector('.app-header') as HTMLElement | null
+    if (appHeader) appHeader.style.display = 'none'
+
+    if (isStudentRegister) {
+      renderStudentRegisterPage(root)
+    } else if (isStudentMyCourses) {
+      await renderMyCoursesPage(root)
+    } else if (isStudentExplore) {
+      await renderExplorePage(root)
+    } else if (isStudentProfile) {
+      await renderProfilePage(root)
+    } else if (isStudentCourseDetail) {
+      await renderCourseDetailPage(root)
+    } else if (isStudentCertificates) {
+      await renderCertificatesPage(root)
+    } else if (isStudentLeaderboard) {
+      await renderLeaderboardPage(root)
+    } else if (isStudentRating) {
+      await renderRatingPage(root)
+    } else if (isStudentEditProfile) {
+      await renderStudentEditProfilePage(root)
+    } else {
+      // Default student route
+      window.location.assign(routes.studentMyCourses)
+    }
   } else {
     renderAuthLanding(root)
   }
@@ -386,7 +438,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentPath === routes.adminUserReview ||
     currentPath === routes.mediaBank ||
     currentPath === routes.dashboard ||
-    currentPath === routes.profile
+    currentPath === routes.profile ||
+    currentPath.startsWith('/student/')
   
   if (isAuthenticatedRoute) {
     if (currentLanguageListenerCleanup) {

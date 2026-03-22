@@ -8,4 +8,16 @@ export const routes = {
   mediaBank: '/media-bank',
   dashboard: '/dashboard',
   profile: '/profile',
+
+  // Student mobile routes
+  studentMyCourses: '/student/my-courses',
+  studentExplore: '/student/explore',
+  studentProfile: '/student/profile',
+  studentCourseDetail: '/student/course',
+  studentCertificates: '/student/certificates',
+  studentLeaderboard: '/student/leaderboard',
+  studentRating: '/student/rating',
+  studentDownloads: '/student/downloads',
+  studentEditProfile: '/student/edit-profile',
+  studentRegister: '/student/register',
 }

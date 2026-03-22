@@ -31,6 +31,7 @@ export interface Course {
   updatedAt: string
   deletedAt?: string | null
   reusableTags?: Tag[]
+  sections?: (Section & { activities?: Activity[] })[]
 }
 
 export interface CourseListQuery {
