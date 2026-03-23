@@ -1586,9 +1586,10 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     try {
       availableTags = await tagsApi.getTags()
 
+      const editTagIds = editCourse?.reusableTags?.map((tag) => tag.id) ?? []
       const initialTagIds = formDraft?.selectedTagIds?.length
         ? formDraft.selectedTagIds
-        : draftCourse?.tags ?? []
+        : draftCourse?.tags?.length ? draftCourse.tags : editTagIds
 
       if (initialTagIds.length > 0) {
         selectedTags = availableTags.filter((tag) => initialTagIds.includes(tag.id))
