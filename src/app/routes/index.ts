@@ -1,4 +1,12 @@
 export const routes = {
+  // Public routes
+  landing: '/',
+  about: '/about',
+  solution: '/solution',
+  institutions: '/institutions',
+  contact: '/contact',
+  auth: '/auth',
+
   home: '/home',
   adminHome: '/admin/home',
   adminUsers: '/admin/users',
