@@ -13,6 +13,21 @@ import { renderAdminUserReviewPage } from '@/features/admin/pages/AdminUserRevie
 import { renderAdminInstitutionsPage } from '@/features/admin/pages/AdminInstitutionsPage'
 import { renderEditProfilePage } from '@/features/auth/pages/EditProfilePage'
 import { renderDashboardPage } from '@/features/dashboard/pages/DashboardPage'
+import {
+  renderMyCoursesPage,
+  renderExplorePage,
+  renderProfilePage,
+  renderStudentEditProfilePage,
+  renderCertificatesPage,
+  renderLeaderboardPage,
+  renderRatingPage,
+  renderCourseDetailPage,
+  renderStudentRegisterPage,
+} from '@/features/student'
+import '@/features/student/styles/mobile.css'
+import { renderLandingPage, renderAboutPage, renderSolutionPage, renderInstitutionsPage, renderContactPage } from '@/features/public'
+import { renderPublicNav, renderPublicHeaderRight, setupPublicMobileSidebar } from '@/features/public/components/PublicNav'
+import '@/features/public/styles/public.css'
 
 let currentLanguageListenerCleanup: (() => void) | null = null
 let closeDropdownListener: ((e: Event) => void) | null = null
@@ -227,6 +242,35 @@ async function initializeApp() {
   const isMediaBank = currentPath === routes.mediaBank
   const isDashboard = currentPath === routes.dashboard
   const isProfile = currentPath === routes.profile
+
+  // Public routes
+  const isLanding = currentPath === routes.landing
+  const isAbout = currentPath === routes.about
+  const isSolution = currentPath === routes.solution
+  const isInstitutions = currentPath === routes.institutions
+  const isContact = currentPath === routes.contact
+  const isAuth = currentPath === routes.auth
+  const isPublicRoute = isLanding || isAbout || isSolution || isInstitutions || isContact || isAuth
+
+  // Redirect authenticated users away from landing to their home
+  if (isLanding && getAccessToken()) {
+    const user = getCurrentUser()
+    window.location.assign(user?.role === 'ADMIN' ? routes.adminHome : routes.home)
+    return
+  }
+
+  // Student mobile routes
+  const isStudentRoute = currentPath.startsWith('/student/')
+  const isStudentRegister = currentPath === routes.studentRegister
+  const isStudentMyCourses = currentPath === routes.studentMyCourses
+  const isStudentExplore = currentPath === routes.studentExplore
+  const isStudentProfile = currentPath === routes.studentProfile
+  const isStudentCourseDetail = currentPath === routes.studentCourseDetail
+  const isStudentCertificates = currentPath === routes.studentCertificates
+  const isStudentLeaderboard = currentPath === routes.studentLeaderboard
+  const isStudentRating = currentPath === routes.studentRating
+  const isStudentEditProfile = currentPath === routes.studentEditProfile
+
   const isAuthenticatedRoute = isCreatorHome || isAdminHome || isAdminUsers || isAdminInstitutions || isAdminUserReview || isMediaBank || isDashboard || isProfile
 
   setupHeaderLogoNavigation(isAuthenticatedRoute)
@@ -314,6 +358,13 @@ async function initializeApp() {
       }
 
       setupMobileSidebar({ fullName, email, initials, avatarUrl, navTabs: sidebarNavTabs })
+    } else if (isPublicRoute) {
+      const headerTabsContainer = document.getElementById('header-tabs-container')
+      if (headerTabsContainer) {
+        renderPublicNav(headerTabsContainer, { currentPath })
+      }
+      renderPublicHeaderRight(languageSwitcherContainer)
+      setupPublicMobileSidebar(currentPath)
     } else {
       mountLanguageSwitcher(languageSwitcherContainer)
     }
@@ -362,8 +413,47 @@ async function initializeApp() {
         renderHomePage(root, currentUser?.role === 'ADMIN' ? 'ADMIN' : 'USER')
       },
     })
-  } else {
+  } else if (isStudentRoute) {
+    // Student mobile routes — hide desktop header
+    const appHeader = document.querySelector('.app-header') as HTMLElement | null
+    if (appHeader) appHeader.style.display = 'none'
+
+    if (isStudentRegister) {
+      renderStudentRegisterPage(root)
+    } else if (isStudentMyCourses) {
+      await renderMyCoursesPage(root)
+    } else if (isStudentExplore) {
+      await renderExplorePage(root)
+    } else if (isStudentProfile) {
+      await renderProfilePage(root)
+    } else if (isStudentCourseDetail) {
+      await renderCourseDetailPage(root)
+    } else if (isStudentCertificates) {
+      await renderCertificatesPage(root)
+    } else if (isStudentLeaderboard) {
+      await renderLeaderboardPage(root)
+    } else if (isStudentRating) {
+      await renderRatingPage(root)
+    } else if (isStudentEditProfile) {
+      await renderStudentEditProfilePage(root)
+    } else {
+      // Default student route
+      window.location.assign(routes.studentMyCourses)
+    }
+  } else if (isLanding) {
+    renderLandingPage(root)
+  } else if (isAbout) {
+    renderAboutPage(root)
+  } else if (isSolution) {
+    renderSolutionPage(root)
+  } else if (isInstitutions) {
+    renderInstitutionsPage(root)
+  } else if (isContact) {
+    renderContactPage(root)
+  } else if (isAuth) {
     renderAuthLanding(root)
+  } else {
+    window.location.assign(routes.landing)
   }
 }
 
@@ -376,8 +466,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     await hideAppLoader()
   }
   
-  // Only subscribe to language changes on authenticated routes
+  // Subscribe to language changes on authenticated and public routes
   const currentPath = window.location.pathname
+  const isPublicRoute =
+    currentPath === routes.landing ||
+    currentPath === routes.about ||
+    currentPath === routes.solution ||
+    currentPath === routes.institutions ||
+    currentPath === routes.contact ||
+    currentPath === routes.auth
   const isAuthenticatedRoute =
     currentPath === routes.home ||
     currentPath === routes.adminHome ||
@@ -386,9 +483,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentPath === routes.adminUserReview ||
     currentPath === routes.mediaBank ||
     currentPath === routes.dashboard ||
-    currentPath === routes.profile
-  
-  if (isAuthenticatedRoute) {
+    currentPath === routes.profile ||
+    currentPath.startsWith('/student/')
+
+  if (isAuthenticatedRoute || isPublicRoute) {
     if (currentLanguageListenerCleanup) {
       currentLanguageListenerCleanup()
     }

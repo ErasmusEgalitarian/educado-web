@@ -1768,6 +1768,9 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     lessons: number
     exercises: number
     activities: ActivityDraft[]
+    videoMediaId?: string | null
+    thumbnailMediaId?: string | null
+    mediaPreview?: { kind: 'video' | 'image'; src: string; poster?: string } | null
   }
   type LessonContentType = '' | 'video' | 'styledText'
   type ExerciseContentType = '' | 'multipleChoice' | 'trueFalse'
@@ -1782,6 +1785,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     contentType: LessonContentType
     firstText: string
     videoFileName: string
+    videoMediaId: string | null
     hasVideoQuestion: boolean
     videoQuestion: string
     videoAlternatives: string[]
@@ -1802,6 +1806,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     contentType: '',
     firstText: '',
     videoFileName: '',
+    videoMediaId: null,
     hasVideoQuestion: true,
     videoQuestion: '',
     videoAlternatives: ['', ''],
@@ -2421,6 +2426,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       contentType: '',
       firstText: '',
       videoFileName: '',
+      videoMediaId: null,
       hasVideoQuestion: true,
       videoQuestion: '',
       videoAlternatives: ['', ''],
@@ -2485,6 +2491,18 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
           ? (activityOptions.length >= 2 ? activityOptions : ['', ''])
           : ['', '']
 
+        // Fetch existing video name if the section has a linked video
+        const existingVideoMediaId = sections[sectionIndex]?.videoMediaId ?? null
+        let existingVideoFileName = ''
+        if (existingVideoMediaId && activity.type === 'video_pause') {
+          try {
+            const videoMeta = await mediaApi.getVideoById(existingVideoMediaId)
+            existingVideoFileName = videoMeta.title || videoMeta.filename || existingVideoMediaId
+          } catch {
+            existingVideoFileName = existingVideoMediaId
+          }
+        }
+
         lessonModalState = {
           isOpen: true,
           sectionId,
@@ -2493,7 +2511,8 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
           name: activity.title ?? '',
           contentType: activity.type === 'video_pause' ? 'video' : 'styledText',
           firstText: activity.type === 'text_reading' ? (activityTextPages[0] ?? '') : '',
-          videoFileName: '',
+          videoFileName: existingVideoFileName,
+          videoMediaId: existingVideoMediaId,
           hasVideoQuestion,
           videoQuestion: activity.type === 'video_pause' ? activityQuestion : '',
           videoAlternatives: videoOptions,
@@ -2936,6 +2955,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
               selectedLessonVideo = selectedFile
               lessonModalState.videoFileName = selectedFile.name
+              lessonModalState.videoMediaId = uploadedId
               lessonModalState.videoError = false
               renderLessonModal()
               cleanup()
@@ -2954,6 +2974,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
             type: selected.blob.type || 'video/mp4',
           })
           lessonModalState.videoFileName = selected.title || 'video'
+          lessonModalState.videoMediaId = selected.id
           lessonModalState.videoError = false
           renderLessonModal()
           cleanup()
@@ -3216,7 +3237,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       const isNameValid = lessonModalState.name.trim().length > 0
       const isContentTypeValid = lessonModalState.contentType.length > 0
       const isEditingVideo = lessonModalState.editingActivityId !== null && lessonModalState.contentType === 'video'
-      const isVideoValid = lessonModalState.contentType !== 'video' || Boolean(selectedLessonVideo) || isEditingVideo
+      const isVideoValid = lessonModalState.contentType !== 'video' || Boolean(selectedLessonVideo) || Boolean(lessonModalState.videoMediaId) || isEditingVideo
       const requiresVideoQuestion = lessonModalState.contentType === 'video' && lessonModalState.hasVideoQuestion
       const isVideoQuestionValid = !requiresVideoQuestion || lessonModalState.videoQuestion.trim().length > 0
       const areVideoAlternativesValid = !requiresVideoQuestion
@@ -3310,6 +3331,14 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
             type: created.type,
             order: created.order,
           })
+        }
+
+        // Update section's videoMediaId if a video was selected
+        if (lessonModalState.videoMediaId && lessonModalState.contentType === 'video') {
+          await sectionsApi.updateSection(section.id, {
+            videoMediaId: lessonModalState.videoMediaId,
+          })
+          section.videoMediaId = lessonModalState.videoMediaId
         }
 
         section.activities.sort((a, b) => a.order - b.order)
