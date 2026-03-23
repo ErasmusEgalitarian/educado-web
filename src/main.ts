@@ -25,6 +25,9 @@ import {
   renderStudentRegisterPage,
 } from '@/features/student'
 import '@/features/student/styles/mobile.css'
+import { renderLandingPage, renderAboutPage, renderSolutionPage, renderInstitutionsPage, renderContactPage } from '@/features/public'
+import { renderPublicNav, renderPublicHeaderRight, setupPublicMobileSidebar } from '@/features/public/components/PublicNav'
+import '@/features/public/styles/public.css'
 
 let currentLanguageListenerCleanup: (() => void) | null = null
 let closeDropdownListener: ((e: Event) => void) | null = null
@@ -240,6 +243,22 @@ async function initializeApp() {
   const isDashboard = currentPath === routes.dashboard
   const isProfile = currentPath === routes.profile
 
+  // Public routes
+  const isLanding = currentPath === routes.landing
+  const isAbout = currentPath === routes.about
+  const isSolution = currentPath === routes.solution
+  const isInstitutions = currentPath === routes.institutions
+  const isContact = currentPath === routes.contact
+  const isAuth = currentPath === routes.auth
+  const isPublicRoute = isLanding || isAbout || isSolution || isInstitutions || isContact || isAuth
+
+  // Redirect authenticated users away from landing to their home
+  if (isLanding && getAccessToken()) {
+    const user = getCurrentUser()
+    window.location.assign(user?.role === 'ADMIN' ? routes.adminHome : routes.home)
+    return
+  }
+
   // Student mobile routes
   const isStudentRoute = currentPath.startsWith('/student/')
   const isStudentRegister = currentPath === routes.studentRegister
@@ -339,6 +358,13 @@ async function initializeApp() {
       }
 
       setupMobileSidebar({ fullName, email, initials, avatarUrl, navTabs: sidebarNavTabs })
+    } else if (isPublicRoute) {
+      const headerTabsContainer = document.getElementById('header-tabs-container')
+      if (headerTabsContainer) {
+        renderPublicNav(headerTabsContainer, { currentPath })
+      }
+      renderPublicHeaderRight(languageSwitcherContainer)
+      setupPublicMobileSidebar(currentPath)
     } else {
       mountLanguageSwitcher(languageSwitcherContainer)
     }
@@ -414,8 +440,20 @@ async function initializeApp() {
       // Default student route
       window.location.assign(routes.studentMyCourses)
     }
-  } else {
+  } else if (isLanding) {
+    renderLandingPage(root)
+  } else if (isAbout) {
+    renderAboutPage(root)
+  } else if (isSolution) {
+    renderSolutionPage(root)
+  } else if (isInstitutions) {
+    renderInstitutionsPage(root)
+  } else if (isContact) {
+    renderContactPage(root)
+  } else if (isAuth) {
     renderAuthLanding(root)
+  } else {
+    window.location.assign(routes.landing)
   }
 }
 
@@ -428,8 +466,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     await hideAppLoader()
   }
   
-  // Only subscribe to language changes on authenticated routes
+  // Subscribe to language changes on authenticated and public routes
   const currentPath = window.location.pathname
+  const isPublicRoute =
+    currentPath === routes.landing ||
+    currentPath === routes.about ||
+    currentPath === routes.solution ||
+    currentPath === routes.institutions ||
+    currentPath === routes.contact ||
+    currentPath === routes.auth
   const isAuthenticatedRoute =
     currentPath === routes.home ||
     currentPath === routes.adminHome ||
@@ -440,8 +485,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentPath === routes.dashboard ||
     currentPath === routes.profile ||
     currentPath.startsWith('/student/')
-  
-  if (isAuthenticatedRoute) {
+
+  if (isAuthenticatedRoute || isPublicRoute) {
     if (currentLanguageListenerCleanup) {
       currentLanguageListenerCleanup()
     }

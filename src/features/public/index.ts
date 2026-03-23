@@ -1,0 +1,5 @@
+export { renderLandingPage } from './pages/LandingPage'
+export { renderAboutPage } from './pages/AboutPage'
+export { renderSolutionPage } from './pages/SolutionPage'
+export { renderInstitutionsPage } from './pages/InstitutionsPage'
+export { renderContactPage } from './pages/ContactPage'

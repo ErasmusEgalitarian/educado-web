@@ -654,11 +654,12 @@ textarea {
     top: 0;
     z-index: 10;
     width: 100%;
-    height: 72px;
-    padding: 24px 48px;
-    background: #fafeff;
-    border-bottom: none;
-    box-shadow: 0 4px 4px rgba(35, 100, 130, 0.25);
+    height: 56px;
+    padding: 0 24px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #e4ecef;
+    box-shadow: none;
 }
 
 .private-header {
@@ -672,11 +673,17 @@ textarea {
     box-shadow: 0 4px 4px rgba(35, 100, 130, 0.25);
 }
 
-.private-header .header-content,
-.public-header .header-content {
+.private-header .header-content {
     max-width: none;
     margin: 0;
     min-height: 40px;
+}
+
+.public-header .header-content {
+    max-width: 1080px;
+    margin: 0 auto;
+    height: 100%;
+    align-items: center;
 }
 
 .header-user-area {
@@ -2761,7 +2768,7 @@ body.sections-modal-open {
     }
 
     .public-header {
-        padding: 16px 24px;
+        padding: 0 24px;
     }
 }
 
@@ -2791,8 +2798,8 @@ body.sections-modal-open {
     }
 
     .public-header {
-        padding: 14px 16px;
-        height: 64px;
+        padding: 0 16px;
+        height: 56px;
     }
 
     .home-card {
