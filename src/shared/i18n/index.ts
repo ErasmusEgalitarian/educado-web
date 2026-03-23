@@ -8,6 +8,411 @@ const LANGUAGE_STORAGE_KEY = 'educado.language'
 
 const translations: Record<Language, TranslationTree> = {
   'pt-BR': {
+    publicNav: {
+      ariaLabel: 'Navegação principal',
+      home: 'Início',
+      about: 'Sobre',
+      solution: 'Solução',
+      institutions: 'Instituições',
+      login: 'Entrar',
+      register: 'Cadastrar',
+    },
+    landing: {
+      hero: {
+        badge: 'Educação que transforma',
+        title: 'Empoderando catadores através da educação',
+        subtitle:
+          'Uma plataforma gamificada de aprendizado que conecta universidades e comunidades de catadores de materiais recicláveis, promovendo inclusão social e desenvolvimento pessoal.',
+        cta: 'Comece a criar',
+        learnMore: 'Saiba mais',
+      },
+      features: {
+        title: 'Uma plataforma completa para educação e impacto social',
+        feature1: {
+          title: 'Aprendizado Mobile',
+          description:
+            'Catadores acessam cursos diretamente no celular, com conteúdo adaptado à sua realidade e ritmo de aprendizado.',
+        },
+        feature2: {
+          title: 'Gamificação',
+          description:
+            'Pontos, badges, leaderboards e streaks mantêm os alunos engajados e motivados ao longo de sua jornada educacional.',
+        },
+        feature3: {
+          title: 'Certificados',
+          description:
+            'Certificados gerados automaticamente ao concluir cursos, reconhecendo o esforço e a dedicação de cada aluno.',
+        },
+        feature4: {
+          title: 'Conteúdo Universitário',
+          description:
+            'Cursos co-criados por professores e alunos universitários, garantindo qualidade acadêmica e relevância prática.',
+        },
+      },
+      audience: {
+        title: 'Para quem é o Educado?',
+        students: {
+          title: 'Para Catadores',
+          description:
+            'Acesse cursos gratuitos sobre reciclagem, desenvolvimento pessoal e profissional diretamente do seu celular.',
+          item1: 'Cursos gratuitos e acessíveis',
+          item2: 'Gamificação para manter a motivação',
+          item3: 'Certificados de conclusão',
+        },
+        creators: {
+          title: 'Para Criadores de Conteúdo',
+          description:
+            'Professores e alunos universitários criam cursos com ferramentas intuitivas para impactar comunidades.',
+          item1: 'Editor de cursos com vídeo, texto e exercícios',
+          item2: 'Banco de mídias integrado',
+          item3: 'Dashboard de acompanhamento',
+        },
+      },
+      howItWorks: {
+        title: 'Como funciona',
+        step1: {
+          title: 'Cadastre-se',
+          description: 'Crie sua conta gratuitamente como criador de conteúdo na plataforma web.',
+        },
+        step2: {
+          title: 'Crie seus cursos',
+          description:
+            'Monte aulas com vídeos, textos e exercícios usando nosso editor intuitivo e banco de mídias.',
+        },
+        step3: {
+          title: 'Impacte vidas',
+          description:
+            'Catadores acessam seu conteúdo pelo app mobile, aprendem no seu ritmo e ganham certificados.',
+        },
+      },
+      sdgs: {
+        title: 'Alinhado aos Objetivos de Desenvolvimento Sustentável',
+        sdg8: {
+          number: '8',
+          title: 'Trabalho Decente',
+          description: 'Promover crescimento econômico e condições de trabalho dignas para catadores.',
+        },
+        sdg10: {
+          number: '10',
+          title: 'Redução das Desigualdades',
+          description: 'Fortalecer a inclusão social através da educação acessível.',
+        },
+        sdg12: {
+          number: '12',
+          title: 'Consumo Responsável',
+          description: 'Aumentar a conscientização sobre reciclagem e práticas sustentáveis.',
+        },
+        sdg13: {
+          number: '13',
+          title: 'Ação Climática',
+          description: 'Fomentar comportamentos sustentáveis e proteção ambiental.',
+        },
+      },
+      partners: {
+        title: 'Uma iniciativa internacional',
+        subtitle:
+          'O Educado é fruto da colaboração entre universidades e organizações de quatro países.',
+        unb: { name: 'Universidade de Brasília', country: 'Brasil' },
+        aalborg: { name: 'Aalborg University', country: 'Dinamarca' },
+        saxion: { name: 'Saxion University', country: 'Holanda' },
+        minho: { name: 'Universidade do Minho', country: 'Portugal' },
+      },
+      cta: {
+        title: 'Pronto para fazer a diferença?',
+        description:
+          'Junte-se à nossa comunidade de criadores e ajude a transformar a vida de catadores através da educação.',
+        button: 'Cadastre-se agora',
+      },
+      footer: {
+        copyright: '© 2026 EDUCADO. Todos os direitos reservados.',
+        initiative: 'Uma iniciativa Egalitarian',
+      },
+    },
+    about: {
+      hero: {
+        title: 'Sobre o Educado',
+        subtitle:
+          'Uma iniciativa internacional que empodera catadores de materiais recicláveis através da educação, tecnologia e inclusão social.',
+      },
+      mission: {
+        title: 'Nossa Missão',
+        description:
+          'Proporcionar oportunidades de crescimento pessoal e educacional para catadores de materiais recicláveis, permitindo que fortaleçam seus conhecimentos, melhorem suas condições de trabalho e acessem caminhos de desenvolvimento profissional através de uma plataforma mobile co-criada com catadores e estudantes da Universidade de Brasília.',
+      },
+      vision: {
+        title: 'Nossa Visão',
+        description:
+          'O Educado vislumbra um futuro onde catadores não são apenas reconhecidos pelo seu papel ambiental essencial, mas também empoderados através da educação, tecnologia e inclusão social.',
+      },
+      values: {
+        title: 'Nossos Valores',
+        value1: {
+          title: 'Inclusão Social',
+          description:
+            'Participação ativa dos catadores no design do conteúdo, garantindo relevância e acessibilidade para quem mais precisa.',
+        },
+        value2: {
+          title: 'Colaboração Internacional',
+          description:
+            'Equipes multidisciplinares de quatro países trabalhando juntas para criar soluções educacionais inovadoras.',
+        },
+        value3: {
+          title: 'Impacto Sustentável',
+          description:
+            'Compromisso com os Objetivos de Desenvolvimento Sustentável da ONU, promovendo trabalho decente e consumo responsável.',
+        },
+      },
+      partners: {
+        title: 'Nossos Parceiros',
+        subtitle:
+          'O Educado é construído pela colaboração de universidades e organizações de quatro países.',
+        unb: {
+          name: 'Universidade de Brasília',
+          country: 'Brasil',
+          role: 'Desenvolvimento de conteúdo, garantia de qualidade e conexão com catadores e cooperativas.',
+        },
+        aalborg: {
+          name: 'Aalborg University',
+          country: 'Dinamarca',
+          role: 'Hub de desenvolvimento com 8 equipes full-stack e processos ágeis.',
+        },
+        saxion: {
+          name: 'Saxion University',
+          country: 'Holanda',
+          role: 'Expertise em ciências aplicadas e design de gamificação.',
+        },
+        minho: {
+          name: 'Universidade do Minho',
+          country: 'Portugal',
+          role: 'Pesquisa em sustentabilidade e metodologias educacionais.',
+        },
+        egalitarian: {
+          name: 'Egalitarian',
+          role: 'Iniciativa multidisciplinar de estudantes focada em inovação e impacto social alinhada à Agenda 2030.',
+        },
+        cooperatives: {
+          name: 'Cooperativas de Catadores',
+          role: 'Parceiros institucionais e beneficiários primários, oferecendo insights sobre desafios da reciclagem.',
+        },
+      },
+      sdgs: {
+        title: 'Compromisso com os ODS da ONU',
+        description:
+          'O Educado está alinhado com os Objetivos de Desenvolvimento Sustentável das Nações Unidas, contribuindo para um mundo mais justo e sustentável.',
+      },
+      howWeWork: {
+        title: 'Como Trabalhamos',
+        description:
+          'O Educado segue metodologias ágeis com sprints bi-semanais, reuniões internacionais de co-trabalho, alinhamento semanal de backend e comunicação assíncrona contínua via GitHub e Discord.',
+        item1: 'Sprints bi-semanais com reviews internacionais',
+        item2: 'Co-criação com catadores e universidades',
+        item3: 'Desenvolvimento open source no GitHub',
+        item4: 'Comunicação contínua via Discord',
+      },
+    },
+    institutions: {
+      hero: {
+        title: 'Contribua com o Educado',
+        subtitle:
+          'Universidades, cooperativas e organizações podem se juntar a uma rede internacional que transforma vidas através da educação.',
+        cta: 'Cadastre sua instituição',
+      },
+      why: {
+        title: 'Por que participar?',
+        benefit1: {
+          title: 'Impacto Social Real',
+          description:
+            'Contribua diretamente para a educação e inclusão de catadores de materiais recicláveis, gerando impacto mensurável em comunidades vulneráveis.',
+        },
+        benefit2: {
+          title: 'Rede Internacional',
+          description:
+            'Faça parte de uma colaboração entre universidades do Brasil, Dinamarca, Holanda e Portugal, com metodologias ágeis e open source.',
+        },
+        benefit3: {
+          title: 'Pesquisa e Inovação',
+          description:
+            'Participe de pesquisas em educação acessível, gamificação e tecnologia para inclusão social, com publicações acadêmicas.',
+        },
+        benefit4: {
+          title: 'Alinhamento com os ODS',
+          description:
+            'Contribua para os Objetivos de Desenvolvimento Sustentável da ONU em trabalho decente, redução de desigualdades e ação climática.',
+        },
+      },
+      how: {
+        title: 'Como participar',
+        step1: {
+          title: 'Entre em contato',
+          description: 'Envie uma mensagem apresentando sua instituição e o interesse em colaborar.',
+        },
+        step2: {
+          title: 'Alinhamento',
+          description: 'Nossa equipe agenda uma reunião para entender como sua instituição pode contribuir.',
+        },
+        step3: {
+          title: 'Integração',
+          description: 'Definimos um plano de colaboração e integramos sua equipe ao projeto.',
+        },
+      },
+      roles: {
+        title: 'Formas de contribuir',
+        subtitle: 'Diferentes instituições podem colaborar de diferentes formas.',
+        role1: {
+          title: 'Universidades',
+          description: 'Criação de conteúdo educacional, pesquisa, equipes de desenvolvimento e design de gamificação.',
+        },
+        role2: {
+          title: 'Cooperativas de Catadores',
+          description: 'Feedback sobre conteúdo, testes de usabilidade, identificação de necessidades reais da comunidade.',
+        },
+        role3: {
+          title: 'ONGs e Organizações Sociais',
+          description: 'Articulação com comunidades, distribuição do app, suporte na capacitação de catadores.',
+        },
+        role4: {
+          title: 'Empresas de Tecnologia',
+          description: 'Infraestrutura, mentoria técnica, patrocínio e apoio ao desenvolvimento open source.',
+        },
+      },
+      cta: {
+        title: 'Quer fazer parte desta rede?',
+        description: 'Preencha o formulário abaixo e nossa equipe entrará em contato.',
+      },
+      form: {
+        institutionName: 'Nome da instituição',
+        institutionNamePlaceholder: 'Ex: Universidade Federal...',
+        contactName: 'Nome do responsável',
+        contactNamePlaceholder: 'Nome completo',
+        email: 'E-mail de contato',
+        emailPlaceholder: 'email@instituicao.edu',
+        type: 'Tipo de instituição',
+        typeUniversity: 'Universidade',
+        typeCooperative: 'Cooperativa de Catadores',
+        typeNgo: 'ONG / Organização Social',
+        typeCompany: 'Empresa de Tecnologia',
+        typeOther: 'Outro',
+        message: 'Como gostaria de contribuir?',
+        messagePlaceholder: 'Descreva brevemente como sua instituição pode colaborar com o projeto...',
+        submit: 'Enviar solicitação',
+        sending: 'Enviando...',
+        success: 'Solicitação enviada com sucesso! Entraremos em contato em breve.',
+        error: 'Não foi possível enviar. Tente novamente.',
+      },
+    },
+    solution: {
+      hero: {
+        title: 'A Solução Educado',
+        subtitle:
+          'Uma plataforma completa com app mobile para catadores e painel web para criadores, unindo gamificação e conteúdo universitário.',
+      },
+      platforms: {
+        title: 'Duas plataformas, um propósito',
+        mobile: {
+          title: 'App Mobile — Para Catadores',
+          description:
+            'Aplicativo mobile-first acessível e intuitivo, com cursos, gamificação e certificados para catadores de materiais recicláveis.',
+          feature1: 'Cursos com vídeos, textos e exercícios interativos',
+          feature2: 'Gamificação: pontos, badges e leaderboards',
+          feature3: 'Certificados automáticos de conclusão',
+          feature4: 'Acompanhamento de progresso pessoal',
+        },
+        web: {
+          title: 'Painel Web — Para Criadores',
+          description:
+            'Plataforma web para professores e alunos universitários criarem e gerenciarem cursos educacionais.',
+          feature1: 'Editor de cursos com blocos de conteúdo',
+          feature2: 'Banco de mídias com upload de vídeos e imagens',
+          feature3: 'Dashboard de acompanhamento de alunos',
+          feature4: 'Painel administrativo com aprovação de criadores',
+        },
+      },
+      features: {
+        title: 'Funcionalidades Principais',
+        feature1: {
+          title: 'Aprovação Automática',
+          description: 'Criadores de conteúdo de instituições parceiras são aprovados automaticamente, agilizando o acesso à plataforma.',
+        },
+        feature2: {
+          title: 'Blocos de Conteúdo',
+          description: 'Cursos compostos por blocos modulares: texto, vídeo, imagem e PDF para máxima flexibilidade.',
+        },
+        feature3: {
+          title: 'Gamificação Completa',
+          description: 'Leaderboards, badges, streaks e certificados que mantêm alunos motivados e engajados.',
+        },
+        feature4: {
+          title: 'Analytics e Relatórios',
+          description: 'Dashboards para administradores monitorarem uso de cursos e progresso dos alunos.',
+        },
+        feature5: {
+          title: 'Aprovação de Criadores',
+          description: 'Fluxo de revisão para garantir a qualidade dos criadores de conteúdo na plataforma.',
+        },
+        feature6: {
+          title: 'Multilíngue',
+          description: 'Suporte a múltiplos idiomas para alcançar comunidades em diferentes países.',
+        },
+      },
+      idea: {
+        title: 'A Ideia por Trás da Solução',
+        description:
+          'Catadores de materiais recicláveis exercem um papel ambiental essencial, mas frequentemente carecem de acesso a educação e desenvolvimento profissional. O Educado preenche essa lacuna conectando universidades que produzem conteúdo de qualidade com comunidades que mais precisam de oportunidades educacionais — tudo através de uma plataforma gamificada que torna o aprendizado acessível, engajante e reconhecido.',
+      },
+    },
+    contact: {
+      hero: {
+        title: 'Fale Conosco',
+        subtitle:
+          'Entre em contato com a equipe do Educado. Estamos disponíveis para dúvidas, parcerias e suporte.',
+      },
+      channels: {
+        title: 'Canais de Contato',
+        email: {
+          title: 'E-mail',
+          description: 'Para dúvidas gerais, parcerias ou suporte técnico.',
+        },
+        github: {
+          title: 'GitHub',
+          description: 'Contribua com código, reporte bugs ou acompanhe o desenvolvimento.',
+        },
+      },
+    },
+    deleteAccount: {
+      title: 'Exclusão de Conta — EDUCADO',
+      intro:
+        'Esta página descreve como os usuários do aplicativo EDUCADO (desenvolvido pela Egalitarian / ErasmusEgalitarian) podem solicitar a exclusão de sua conta e quais dados são afetados.',
+      steps: {
+        title: 'Como solicitar a exclusão da sua conta',
+        step1: 'Abra o aplicativo EDUCADO e faça login na sua conta.',
+        step2: 'Acesse seu perfil tocando no ícone de perfil na barra de navegação.',
+        step3: 'Toque em "Editar Perfil" e depois em "Excluir Conta".',
+        step4: 'Confirme a exclusão no diálogo de confirmação.',
+        alt: 'Alternativamente, você pode solicitar a exclusão enviando um e-mail para',
+        altEmail: 'lgabrielantunes@gmail.com',
+        altNote: 'com o assunto "Exclusão de Conta" e o e-mail cadastrado na sua conta.',
+      },
+      data: {
+        title: 'Dados excluídos e mantidos',
+        deletedTitle: 'Dados excluídos permanentemente',
+        deleted1: 'Informações pessoais (nome, e-mail, telefone, data de nascimento)',
+        deleted2: 'Foto de perfil e avatar',
+        deleted3: 'Dados de formação acadêmica e profissional',
+        deleted4: 'Motivações e textos do perfil de criador',
+        deleted5: 'Progresso em cursos e pontuação de gamificação',
+        deleted6: 'Certificados emitidos',
+        retainedTitle: 'Dados mantidos de forma anônima',
+        retained1: 'Estatísticas agregadas de uso dos cursos (sem identificação pessoal)',
+        retained2: 'Conteúdo de cursos criados (desvinculado do autor após exclusão)',
+        retentionTitle: 'Prazo de exclusão',
+        retentionText:
+          'Os dados pessoais são excluídos em até 30 dias após a confirmação da solicitação. Backups automatizados podem reter dados criptografados por até 90 dias antes da exclusão definitiva.',
+      },
+      contact: {
+        title: 'Contato',
+        text: 'Em caso de dúvidas sobre a exclusão de dados, entre em contato:',
+      },
+    },
     common: {
       language: 'Idioma',
       portuguese: 'Português',
@@ -945,8 +1350,553 @@ const translations: Record<Language, TranslationTree> = {
       noData: 'Nenhum dado disponível',
       noComments: 'Nenhum comentário ainda',
     },
+    student: {
+      nav: {
+        myCourses: 'Meus Cursos',
+        explore: 'Explorar',
+        profile: 'Perfil',
+      },
+      myCourses: {
+        title: 'Meus Cursos',
+        inProgress: 'Em andamento',
+        completed: 'Concluídos',
+        emptyTitle: 'Nenhum curso encontrado',
+        emptyText: 'Você ainda não se inscreveu em nenhum curso. Explore os cursos disponíveis!',
+        exploreCourses: 'Explorar Cursos',
+        points: 'pontos',
+        percentComplete: 'concluído',
+        startCourse: 'Começar Curso',
+        continueCourse: 'Continuar Curso',
+        dropCourse: 'Retirar curso',
+        download: 'Baixar',
+      },
+      explore: {
+        title: 'Explorar Cursos',
+        searchPlaceholder: 'Buscar curso',
+        all: 'Todos',
+        enrollNow: 'Inscreva-se agora',
+        enrolled: 'Inscrição realizada',
+        continueCourse: 'Continuar Curso',
+        learnMore: 'saiba mais',
+        hours: 'horas',
+        bestRated: 'Melhor Avaliação',
+        level: {
+          beginner: 'Iniciante',
+          intermediate: 'Intermediário',
+          advanced: 'Avançado',
+        },
+        certificate: 'Certificado incluso',
+        startNow: 'Início imediato',
+        accessOneYear: 'Acesso por 1 ano',
+      },
+      profile: {
+        title: 'Perfil',
+        editProfile: 'Editar perfil',
+        certificates: 'Certificados',
+        ranking: 'Ranking',
+        downloads: 'Download',
+        changePassword: 'Alterar senha',
+        logout: 'Sair',
+        deleteAccount: 'Excluir minha conta',
+        consecutiveDays: 'dia seguido',
+        consecutiveDaysPlural: 'dias seguidos',
+        position: 'posição',
+        level: 'Nível',
+        changePhoto: 'Alterar Foto',
+        removePhoto: 'Remover imagem',
+        firstName: 'Nome',
+        lastName: 'Sobrenome',
+        email: 'E-mail',
+        save: 'Salvar',
+      },
+      certificates: {
+        title: 'Certificados',
+        searchPlaceholder: 'Buscar certificado',
+        emptyTitle: 'Nenhum certificado disponível :(',
+        emptyText: 'Você ainda não finalizou um curso. Acesse a página de cursos e continue seus estudos para emitir certificados.',
+        goToCourses: 'Ir para cursos',
+        view: 'visualizar',
+        downloadPdf: 'Baixar PDF',
+      },
+      leaderboard: {
+        title: 'Ranking',
+        monthLabel: 'Ranking referente ao mês de',
+        pts: 'pts',
+        months: {
+          '01': 'Janeiro',
+          '02': 'Fevereiro',
+          '03': 'Março',
+          '04': 'Abril',
+          '05': 'Maio',
+          '06': 'Junho',
+          '07': 'Julho',
+          '08': 'Agosto',
+          '09': 'Setembro',
+          '10': 'Outubro',
+          '11': 'Novembro',
+          '12': 'Dezembro',
+        },
+      },
+      rating: {
+        title: 'Conte o que achou sobre o curso!',
+        howDoYouRate: 'Como você avalia este curso?',
+        chooseStars: 'Escolha de 1 a 5 estrelas para classificar',
+        star1: 'Muito ruim',
+        star2: 'Ruim',
+        star3: 'Neutro',
+        star4: 'Bom!',
+        star5: 'Muito bom!',
+        whatDidYouLike: 'O que você mais gostou no curso?',
+        tags: {
+          interestingLessons: 'Aulas interessantes',
+          didacticProfessionals: 'Profissionais didáticos',
+          dynamicLessons: 'Aulas dinâmicas',
+          informativeContent: 'Conteúdo informativo',
+          goodMaterial: 'Bom material didático',
+        },
+        leaveComment: 'Deixe um comentário:',
+        commentPlaceholder: 'Escreva aqui seu feedback',
+        submit: 'Enviar',
+      },
+      completion: {
+        sectionComplete: 'Você está progredindo! Próxima seção, aqui vamos nós!',
+        extraPoints: 'Pontos Extras',
+        totalPoints: 'Pontos Totais',
+        continueBtn: 'Continuar',
+        courseComplete: 'Excelente trabalho, você terminou!',
+        congratsText: 'Bom trabalho, {{name}}! Você pode ver suas estatísticas, placar educado e certificação antes de continuar.',
+        trackProgress: 'Acompanhe o seu progresso',
+        progressText: 'Você respondeu {{percentage}} correta na primeira tentativa e a sua posição atual é {{position}}, bravo! Clique aqui para ver o ranking completo.',
+        certificateTitle: 'Você Recebeu um Certificado!',
+        certificateText: 'Parabéns, você concluiu o curso {{course}} e recebeu uma certificação. Clique aqui para ver o certificado ou acesse em "Perfil".',
+      },
+      downloads: {
+        title: 'Downloads',
+        noConnection: 'Sem conexão com internet',
+        noConnectionText: 'Você está sem acesso a internet. Vá para meus cursos e acesse os cursos baixados.',
+        goToDownloads: 'Ir para cursos baixados',
+        deleteTitle: 'Excluir download',
+        deleteText: 'Você tem certeza que deseja excluir o download do curso? Você ainda pode assistí-lo com acesso a internet e baixá-lo novamente.',
+        cancel: 'Cancelar',
+        delete: 'Excluir',
+      },
+      register: {
+        title: 'Criar conta',
+        firstName: 'Nome',
+        lastName: 'Sobrenome',
+        email: 'E-mail (opcional)',
+        phone: 'Celular (opcional)',
+        dateOfBirth: 'Data de nascimento (opcional)',
+        createAccount: 'Criar Conta',
+      },
+    },
   },
   'en-US': {
+    publicNav: {
+      ariaLabel: 'Main navigation',
+      home: 'Home',
+      about: 'About',
+      solution: 'Solution',
+      institutions: 'Institutions',
+      login: 'Log in',
+      register: 'Sign up',
+    },
+    landing: {
+      hero: {
+        badge: 'Education that transforms',
+        title: 'Empowering waste pickers through education',
+        subtitle:
+          'A gamified learning platform connecting universities and waste picker communities, promoting social inclusion and personal development.',
+        cta: 'Start creating',
+        learnMore: 'Learn more',
+      },
+      features: {
+        title: 'A complete platform for education and social impact',
+        feature1: {
+          title: 'Mobile Learning',
+          description:
+            'Waste pickers access courses directly on their phones, with content adapted to their reality and learning pace.',
+        },
+        feature2: {
+          title: 'Gamification',
+          description:
+            'Points, badges, leaderboards, and streaks keep learners engaged and motivated throughout their educational journey.',
+        },
+        feature3: {
+          title: 'Certificates',
+          description:
+            'Certificates are automatically generated upon course completion, recognizing each learner\'s effort and dedication.',
+        },
+        feature4: {
+          title: 'University Content',
+          description:
+            'Courses co-created by professors and university students, ensuring academic quality and practical relevance.',
+        },
+      },
+      audience: {
+        title: 'Who is Educado for?',
+        students: {
+          title: 'For Waste Pickers',
+          description:
+            'Access free courses on recycling, personal and professional development directly from your phone.',
+          item1: 'Free and accessible courses',
+          item2: 'Gamification to stay motivated',
+          item3: 'Completion certificates',
+        },
+        creators: {
+          title: 'For Content Creators',
+          description:
+            'Professors and university students create courses with intuitive tools to impact communities.',
+          item1: 'Course editor with video, text, and exercises',
+          item2: 'Integrated media library',
+          item3: 'Progress tracking dashboard',
+        },
+      },
+      howItWorks: {
+        title: 'How it works',
+        step1: {
+          title: 'Sign up',
+          description: 'Create your free account as a content creator on the web platform.',
+        },
+        step2: {
+          title: 'Build your courses',
+          description:
+            'Create lessons with videos, texts, and exercises using our intuitive editor and media library.',
+        },
+        step3: {
+          title: 'Impact lives',
+          description:
+            'Waste pickers access your content via the mobile app, learn at their own pace, and earn certificates.',
+        },
+      },
+      sdgs: {
+        title: 'Aligned with the UN Sustainable Development Goals',
+        sdg8: {
+          number: '8',
+          title: 'Decent Work',
+          description: 'Promote economic growth and dignified working conditions for waste pickers.',
+        },
+        sdg10: {
+          number: '10',
+          title: 'Reduced Inequalities',
+          description: 'Strengthen social inclusion through accessible education.',
+        },
+        sdg12: {
+          number: '12',
+          title: 'Responsible Consumption',
+          description: 'Raise awareness about recycling and sustainable practices.',
+        },
+        sdg13: {
+          number: '13',
+          title: 'Climate Action',
+          description: 'Foster sustainable behaviors and environmental protection.',
+        },
+      },
+      partners: {
+        title: 'An international initiative',
+        subtitle:
+          'Educado is the result of collaboration between universities and organizations from four countries.',
+        unb: { name: 'University of Bras\u00edlia', country: 'Brazil' },
+        aalborg: { name: 'Aalborg University', country: 'Denmark' },
+        saxion: { name: 'Saxion University', country: 'Netherlands' },
+        minho: { name: 'University of Minho', country: 'Portugal' },
+      },
+      cta: {
+        title: 'Ready to make a difference?',
+        description:
+          'Join our community of creators and help transform the lives of waste pickers through education.',
+        button: 'Sign up now',
+      },
+      footer: {
+        copyright: '© 2026 EDUCADO. All rights reserved.',
+        initiative: 'An Egalitarian initiative',
+      },
+    },
+    about: {
+      hero: {
+        title: 'About Educado',
+        subtitle:
+          'An international initiative empowering waste pickers through education, technology, and social inclusion.',
+      },
+      mission: {
+        title: 'Our Mission',
+        description:
+          'To provide personal and educational growth opportunities for waste pickers, enabling them to strengthen knowledge, improve working conditions, and access professional development pathways through a mobile-first platform co-created with waste pickers and University of Bras\u00edlia students.',
+      },
+      vision: {
+        title: 'Our Vision',
+        description:
+          'Educado envisions a future where waste pickers are not only recognized for their essential environmental role but also empowered through education, technology, and social inclusion.',
+      },
+      values: {
+        title: 'Our Values',
+        value1: {
+          title: 'Social Inclusion',
+          description:
+            'Active waste picker participation in content design, ensuring relevance and accessibility for those who need it most.',
+        },
+        value2: {
+          title: 'International Collaboration',
+          description:
+            'Multidisciplinary teams from four countries working together to create innovative educational solutions.',
+        },
+        value3: {
+          title: 'Sustainable Impact',
+          description:
+            'Commitment to the UN Sustainable Development Goals, promoting decent work and responsible consumption.',
+        },
+      },
+      partners: {
+        title: 'Our Partners',
+        subtitle:
+          'Educado is built through the collaboration of universities and organizations from four countries.',
+        unb: {
+          name: 'University of Bras\u00edlia',
+          country: 'Brazil',
+          role: 'Content development, quality assurance, and connection with waste pickers and cooperatives.',
+        },
+        aalborg: {
+          name: 'Aalborg University',
+          country: 'Denmark',
+          role: 'Development hub with 8 full-stack teams and agile processes.',
+        },
+        saxion: {
+          name: 'Saxion University',
+          country: 'Netherlands',
+          role: 'Expertise in applied sciences and gamification design.',
+        },
+        minho: {
+          name: 'University of Minho',
+          country: 'Portugal',
+          role: 'Research on sustainability and educational methodologies.',
+        },
+        egalitarian: {
+          name: 'Egalitarian',
+          role: 'Multidisciplinary student initiative focused on innovation and social impact aligned with the 2030 Agenda.',
+        },
+        cooperatives: {
+          name: 'Waste Picker Cooperatives',
+          role: 'Institutional partners and primary beneficiaries, providing insights into recycling challenges.',
+        },
+      },
+      sdgs: {
+        title: 'Commitment to the UN SDGs',
+        description:
+          'Educado is aligned with the United Nations Sustainable Development Goals, contributing to a more just and sustainable world.',
+      },
+      howWeWork: {
+        title: 'How We Work',
+        description:
+          'Educado follows agile methodologies with bi-weekly sprints, international co-working meetings, weekly backend alignment, and continuous asynchronous communication via GitHub and Discord.',
+        item1: 'Bi-weekly sprints with international reviews',
+        item2: 'Co-creation with waste pickers and universities',
+        item3: 'Open source development on GitHub',
+        item4: 'Continuous communication via Discord',
+      },
+    },
+    institutions: {
+      hero: {
+        title: 'Contribute to Educado',
+        subtitle:
+          'Universities, cooperatives, and organizations can join an international network that transforms lives through education.',
+        cta: 'Register your institution',
+      },
+      why: {
+        title: 'Why participate?',
+        benefit1: {
+          title: 'Real Social Impact',
+          description:
+            'Directly contribute to the education and inclusion of waste pickers, generating measurable impact in vulnerable communities.',
+        },
+        benefit2: {
+          title: 'International Network',
+          description:
+            'Join a collaboration between universities from Brazil, Denmark, Netherlands, and Portugal, with agile and open source methodologies.',
+        },
+        benefit3: {
+          title: 'Research and Innovation',
+          description:
+            'Participate in research on accessible education, gamification, and technology for social inclusion, with academic publications.',
+        },
+        benefit4: {
+          title: 'SDG Alignment',
+          description:
+            'Contribute to the UN Sustainable Development Goals in decent work, reduced inequalities, and climate action.',
+        },
+      },
+      how: {
+        title: 'How to participate',
+        step1: {
+          title: 'Get in touch',
+          description: 'Send a message introducing your institution and your interest in collaborating.',
+        },
+        step2: {
+          title: 'Alignment',
+          description: 'Our team schedules a meeting to understand how your institution can contribute.',
+        },
+        step3: {
+          title: 'Integration',
+          description: 'We define a collaboration plan and integrate your team into the project.',
+        },
+      },
+      roles: {
+        title: 'Ways to contribute',
+        subtitle: 'Different institutions can collaborate in different ways.',
+        role1: {
+          title: 'Universities',
+          description: 'Educational content creation, research, development teams, and gamification design.',
+        },
+        role2: {
+          title: 'Waste Picker Cooperatives',
+          description: 'Content feedback, usability testing, identifying real community needs.',
+        },
+        role3: {
+          title: 'NGOs and Social Organizations',
+          description: 'Community outreach, app distribution, support in waste picker training.',
+        },
+        role4: {
+          title: 'Technology Companies',
+          description: 'Infrastructure, technical mentoring, sponsorship, and open source development support.',
+        },
+      },
+      cta: {
+        title: 'Want to join this network?',
+        description: 'Fill out the form below and our team will get in touch.',
+      },
+      form: {
+        institutionName: 'Institution name',
+        institutionNamePlaceholder: 'E.g. Federal University of...',
+        contactName: 'Contact person',
+        contactNamePlaceholder: 'Full name',
+        email: 'Contact email',
+        emailPlaceholder: 'email@institution.edu',
+        type: 'Institution type',
+        typeUniversity: 'University',
+        typeCooperative: 'Waste Picker Cooperative',
+        typeNgo: 'NGO / Social Organization',
+        typeCompany: 'Technology Company',
+        typeOther: 'Other',
+        message: 'How would you like to contribute?',
+        messagePlaceholder: 'Briefly describe how your institution can collaborate with the project...',
+        submit: 'Submit request',
+        sending: 'Sending...',
+        success: 'Request sent successfully! We will be in touch soon.',
+        error: 'Could not send. Please try again.',
+      },
+    },
+    solution: {
+      hero: {
+        title: 'The Educado Solution',
+        subtitle:
+          'A complete platform with a mobile app for waste pickers and a web panel for creators, combining gamification and university content.',
+      },
+      platforms: {
+        title: 'Two platforms, one purpose',
+        mobile: {
+          title: 'Mobile App — For Waste Pickers',
+          description:
+            'Accessible and intuitive mobile-first app with courses, gamification, and certificates for waste pickers.',
+          feature1: 'Courses with videos, texts, and interactive exercises',
+          feature2: 'Gamification: points, badges, and leaderboards',
+          feature3: 'Automatic completion certificates',
+          feature4: 'Personal progress tracking',
+        },
+        web: {
+          title: 'Web Panel — For Creators',
+          description:
+            'Web platform for professors and university students to create and manage educational courses.',
+          feature1: 'Course editor with content blocks',
+          feature2: 'Media library with video and image upload',
+          feature3: 'Student progress dashboard',
+          feature4: 'Admin panel with creator approval',
+        },
+      },
+      features: {
+        title: 'Key Features',
+        feature1: {
+          title: 'Auto Approval',
+          description: 'Content creators from partner institutions are automatically approved, streamlining platform access.',
+        },
+        feature2: {
+          title: 'Content Blocks',
+          description: 'Courses built from modular blocks: text, video, image, and PDF for maximum flexibility.',
+        },
+        feature3: {
+          title: 'Full Gamification',
+          description: 'Leaderboards, badges, streaks, and certificates that keep learners motivated and engaged.',
+        },
+        feature4: {
+          title: 'Analytics and Reports',
+          description: 'Dashboards for administrators to monitor course usage and student progress.',
+        },
+        feature5: {
+          title: 'Creator Approval',
+          description: 'Review flow to ensure the quality of content creators on the platform.',
+        },
+        feature6: {
+          title: 'Multilingual',
+          description: 'Multi-language support to reach communities in different countries.',
+        },
+      },
+      idea: {
+        title: 'The Idea Behind the Solution',
+        description:
+          'Waste pickers play an essential environmental role but often lack access to education and professional development. Educado bridges this gap by connecting universities that produce quality content with communities that need educational opportunities the most \u2014 all through a gamified platform that makes learning accessible, engaging, and recognized.',
+      },
+    },
+    contact: {
+      hero: {
+        title: 'Contact Us',
+        subtitle:
+          'Get in touch with the Educado team. We are available for questions, partnerships, and support.',
+      },
+      channels: {
+        title: 'Contact Channels',
+        email: {
+          title: 'Email',
+          description: 'For general questions, partnerships, or technical support.',
+        },
+        github: {
+          title: 'GitHub',
+          description: 'Contribute code, report bugs, or follow development.',
+        },
+      },
+    },
+    deleteAccount: {
+      title: 'Account Deletion — EDUCADO',
+      intro:
+        'This page describes how users of the EDUCADO app (developed by Egalitarian / ErasmusEgalitarian) can request account deletion and which data is affected.',
+      steps: {
+        title: 'How to request account deletion',
+        step1: 'Open the EDUCADO app and log in to your account.',
+        step2: 'Go to your profile by tapping the profile icon in the navigation bar.',
+        step3: 'Tap "Edit Profile" and then "Delete Account".',
+        step4: 'Confirm the deletion in the confirmation dialog.',
+        alt: 'Alternatively, you can request deletion by sending an email to',
+        altEmail: 'lgabrielantunes@gmail.com',
+        altNote: 'with the subject "Account Deletion" and the email address registered to your account.',
+      },
+      data: {
+        title: 'Data deleted and retained',
+        deletedTitle: 'Permanently deleted data',
+        deleted1: 'Personal information (name, email, phone, date of birth)',
+        deleted2: 'Profile picture and avatar',
+        deleted3: 'Academic and professional background data',
+        deleted4: 'Motivations and creator profile texts',
+        deleted5: 'Course progress and gamification scores',
+        deleted6: 'Issued certificates',
+        retainedTitle: 'Data retained anonymously',
+        retained1: 'Aggregated course usage statistics (no personal identification)',
+        retained2: 'Created course content (unlinked from author after deletion)',
+        retentionTitle: 'Deletion timeline',
+        retentionText:
+          'Personal data is deleted within 30 days of request confirmation. Automated backups may retain encrypted data for up to 90 days before permanent deletion.',
+      },
+      contact: {
+        title: 'Contact',
+        text: 'For questions about data deletion, please contact:',
+      },
+    },
     common: {
       language: 'Language',
       portuguese: 'Português',
@@ -1884,6 +2834,146 @@ const translations: Record<Language, TranslationTree> = {
       dynamicLessons: 'Dynamic lessons',
       noData: 'No data available',
       noComments: 'No comments yet',
+    },
+    student: {
+      nav: {
+        myCourses: 'My Courses',
+        explore: 'Explore',
+        profile: 'Profile',
+      },
+      myCourses: {
+        title: 'My Courses',
+        inProgress: 'In Progress',
+        completed: 'Completed',
+        emptyTitle: 'No courses found',
+        emptyText: "You haven't enrolled in any courses yet. Explore the available courses!",
+        exploreCourses: 'Explore Courses',
+        points: 'points',
+        percentComplete: 'completed',
+        startCourse: 'Start Course',
+        continueCourse: 'Continue Course',
+        dropCourse: 'Drop course',
+        download: 'Download',
+      },
+      explore: {
+        title: 'Explore Courses',
+        searchPlaceholder: 'Search course',
+        all: 'All',
+        enrollNow: 'Enroll now',
+        enrolled: 'Enrolled',
+        continueCourse: 'Continue Course',
+        learnMore: 'learn more',
+        hours: 'hours',
+        bestRated: 'Best Rated',
+        level: {
+          beginner: 'Beginner',
+          intermediate: 'Intermediate',
+          advanced: 'Advanced',
+        },
+        certificate: 'Certificate included',
+        startNow: 'Start now',
+        accessOneYear: '1 year access',
+      },
+      profile: {
+        title: 'Profile',
+        editProfile: 'Edit profile',
+        certificates: 'Certificates',
+        ranking: 'Ranking',
+        downloads: 'Downloads',
+        changePassword: 'Change password',
+        logout: 'Logout',
+        deleteAccount: 'Delete my account',
+        consecutiveDays: 'consecutive day',
+        consecutiveDaysPlural: 'consecutive days',
+        position: 'position',
+        level: 'Level',
+        changePhoto: 'Change Photo',
+        removePhoto: 'Remove image',
+        firstName: 'First name',
+        lastName: 'Last name',
+        email: 'Email',
+        save: 'Save',
+      },
+      certificates: {
+        title: 'Certificates',
+        searchPlaceholder: 'Search certificate',
+        emptyTitle: 'No certificates available :(',
+        emptyText: "You haven't completed a course yet. Go to courses and continue studying to earn certificates.",
+        goToCourses: 'Go to courses',
+        view: 'view',
+        downloadPdf: 'Download PDF',
+      },
+      leaderboard: {
+        title: 'Ranking',
+        monthLabel: 'Ranking for the month of',
+        pts: 'pts',
+        months: {
+          '01': 'January',
+          '02': 'February',
+          '03': 'March',
+          '04': 'April',
+          '05': 'May',
+          '06': 'June',
+          '07': 'July',
+          '08': 'August',
+          '09': 'September',
+          '10': 'October',
+          '11': 'November',
+          '12': 'December',
+        },
+      },
+      rating: {
+        title: 'Tell us what you thought about the course!',
+        howDoYouRate: 'How do you rate this course?',
+        chooseStars: 'Choose from 1 to 5 stars to rate',
+        star1: 'Very bad',
+        star2: 'Bad',
+        star3: 'Neutral',
+        star4: 'Good!',
+        star5: 'Very good!',
+        whatDidYouLike: 'What did you like most about the course?',
+        tags: {
+          interestingLessons: 'Interesting lessons',
+          didacticProfessionals: 'Didactic professionals',
+          dynamicLessons: 'Dynamic lessons',
+          informativeContent: 'Informative content',
+          goodMaterial: 'Good didactic material',
+        },
+        leaveComment: 'Leave a comment:',
+        commentPlaceholder: 'Write your feedback here',
+        submit: 'Submit',
+      },
+      completion: {
+        sectionComplete: "You're progressing! Next section, here we go!",
+        extraPoints: 'Extra Points',
+        totalPoints: 'Total Points',
+        continueBtn: 'Continue',
+        courseComplete: 'Excellent work, you finished!',
+        congratsText: 'Great job, {{name}}! You can see your statistics, leaderboard and certification before continuing.',
+        trackProgress: 'Track your progress',
+        progressText: 'You answered {{percentage}} correctly on the first try and your current position is {{position}}, well done! Click here to see the full ranking.',
+        certificateTitle: 'You Received a Certificate!',
+        certificateText: 'Congratulations, you completed the course {{course}} and received a certification. Click here to see the certificate or access it in "Profile".',
+      },
+      downloads: {
+        title: 'Downloads',
+        noConnection: 'No internet connection',
+        noConnectionText: 'You are offline. Go to my courses and access downloaded courses.',
+        goToDownloads: 'Go to downloaded courses',
+        deleteTitle: 'Delete download',
+        deleteText: 'Are you sure you want to delete this course download? You can still watch it with internet access and download it again.',
+        cancel: 'Cancel',
+        delete: 'Delete',
+      },
+      register: {
+        title: 'Create account',
+        firstName: 'First name',
+        lastName: 'Last name',
+        email: 'Email (optional)',
+        phone: 'Phone (optional)',
+        dateOfBirth: 'Date of birth (optional)',
+        createAccount: 'Create Account',
+      },
     },
   },
 }

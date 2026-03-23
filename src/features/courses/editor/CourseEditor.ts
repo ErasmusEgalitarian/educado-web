@@ -1,3 +1,6 @@
+import { sectionsApi } from '@/features/courses/api/sections.api'
+import { activitiesApi } from '@/features/courses/api/activities.api'
+import { coursesApi } from '@/features/courses/api/courses.api'
 
 export interface Section {
   id: string
@@ -39,12 +42,8 @@ export class CourseEditor {
   async loadSections() {
     if (!this.courseId) return
     try {
-      const response = await fetch(`/api/sections/course/${this.courseId}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch sections')
-      }
-      const data = await response.json()
-      this.sections = Array.isArray(data) ? data : []
+      const course = await coursesApi.getCourse(this.courseId)
+      this.sections = Array.isArray(course.sections) ? course.sections : []
     } catch (error) {
       console.error('Error loading sections:', error)
       this.sections = []
@@ -136,13 +135,13 @@ export class CourseEditor {
             </div>
 
             <div class="form-group">
-              <label>Video URL (optional)</label>
-              <input type="url" id="section-video" />
+              <label>Video Media ID (optional)</label>
+              <input type="text" id="section-video" placeholder="UUID or MongoDB ObjectId" />
             </div>
 
             <div class="form-group">
-              <label>Thumbnail URL (optional)</label>
-              <input type="url" id="section-thumbnail" />
+              <label>Thumbnail Media ID (optional)</label>
+              <input type="text" id="section-thumbnail" placeholder="UUID or MongoDB ObjectId" />
             </div>
 
             <div class="form-group">
@@ -352,30 +351,38 @@ Page 2 content..."></textarea>
 
   async saveSection() {
     const id = (document.getElementById('section-id') as HTMLInputElement).value
-    const data = {
-      id: id || `section-${Date.now()}`,
-      courseId: this.courseId,
-      title: (document.getElementById('section-title') as HTMLInputElement).value,
-      videoMediaId: (document.getElementById('section-video') as HTMLInputElement).value || null,
-      thumbnailMediaId: (document.getElementById('section-thumbnail') as HTMLInputElement).value || null,
-      duration: parseInt((document.getElementById('section-duration') as HTMLInputElement).value) || null,
-      order: parseInt((document.getElementById('section-order') as HTMLInputElement).value)
-    }
+    const title = (document.getElementById('section-title') as HTMLInputElement).value
+    const videoMediaId = (document.getElementById('section-video') as HTMLInputElement).value || null
+    const thumbnailMediaId = (document.getElementById('section-thumbnail') as HTMLInputElement).value || null
+    const duration = parseInt((document.getElementById('section-duration') as HTMLInputElement).value) || null
+    const order = parseInt((document.getElementById('section-order') as HTMLInputElement).value)
 
     try {
-      const response = await fetch(
-        id ? `/api/sections/${id}` : '/api/sections',
-        {
-          method: id ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        }
-      )
-
-      if (response.ok) {
-        await this.loadSections()
-        this.render()
+      if (id) {
+        // Update existing section
+        await sectionsApi.updateSection(id, {
+          title,
+          videoMediaId,
+          thumbnailMediaId,
+          duration,
+          order,
+        })
+      } else {
+        // Create new section
+        if (!this.courseId) return
+        const newId = `section-${Date.now()}`
+        await sectionsApi.createSection({
+          id: newId,
+          courseId: this.courseId,
+          title,
+          videoMediaId,
+          thumbnailMediaId,
+          duration,
+          order,
+        })
       }
+      await this.loadSections()
+      this.render()
     } catch (error) {
       console.error('Error saving section:', error)
     }
@@ -415,16 +422,9 @@ Page 2 content..."></textarea>
     }
 
     try {
-      const response = await fetch('/api/activities', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      })
-
-      if (response.ok) {
-        await this.loadSections()
-        this.render()
-      }
+      await activitiesApi.createActivity(data)
+      await this.loadSections()
+      this.render()
     } catch (error) {
       console.error('Error saving activity:', error)
     }
@@ -432,11 +432,9 @@ Page 2 content..."></textarea>
 
   async deleteSection(id: string) {
     try {
-      const response = await fetch(`/api/sections/${id}`, { method: 'DELETE' })
-      if (response.ok) {
-        await this.loadSections()
-        this.render()
-      }
+      await sectionsApi.deleteSection(id)
+      await this.loadSections()
+      this.render()
     } catch (error) {
       console.error('Error deleting section:', error)
     }
