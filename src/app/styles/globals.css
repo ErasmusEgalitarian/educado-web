@@ -1613,6 +1613,29 @@ textarea {
     color: #c43131;
 }
 
+.section-activity-drag-handle {
+    cursor: grab;
+    color: #999;
+    font-size: 16px;
+    user-select: none;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.section-activity-drag-handle:active {
+    cursor: grabbing;
+}
+
+.section-activity-card.is-dragging {
+    opacity: 0.4;
+    border-style: dashed;
+}
+
+.section-activity-card.is-drag-over {
+    border-color: #4A90A4;
+    background: #e8f4f8;
+}
+
 .section-add-btn {
     border: none;
     background: transparent;

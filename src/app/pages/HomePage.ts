@@ -1788,6 +1788,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     videoFileName: string
     videoMediaId: string | null
     hasVideoQuestion: boolean
+    videoPauseTimestamp: string
     videoQuestion: string
     videoAlternatives: string[]
     correctVideoAlternativeIndex: number | null
@@ -1809,6 +1810,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     videoFileName: '',
     videoMediaId: null,
     hasVideoQuestion: true,
+    videoPauseTimestamp: '',
     videoQuestion: '',
     videoAlternatives: ['', ''],
     correctVideoAlternativeIndex: 0,
@@ -2429,6 +2431,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       videoFileName: '',
       videoMediaId: null,
       hasVideoQuestion: true,
+      videoPauseTimestamp: '',
       videoQuestion: '',
       videoAlternatives: ['', ''],
       correctVideoAlternativeIndex: 0,
@@ -2515,6 +2518,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
           videoFileName: existingVideoFileName,
           videoMediaId: existingVideoMediaId,
           hasVideoQuestion,
+          videoPauseTimestamp: activity.pauseTimestamp != null ? String(activity.pauseTimestamp) : '',
           videoQuestion: activity.type === 'video_pause' ? activityQuestion : '',
           videoAlternatives: videoOptions,
           correctVideoAlternativeIndex: activity.type === 'video_pause' ? numericCorrectAnswer : 0,
@@ -3047,6 +3051,11 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
             ${showVideoQuestionField ? `
               <div class="sections-lesson-modal-question ${lessonModalState.videoQuestionError ? 'is-invalid' : ''}">
                 <label class="new-course-field">
+                  <span>${st('modal.fields.pauseTimestamp') || 'Momento da pergunta (segundos)'}</span>
+                  <input type="number" id="lesson-pause-timestamp" min="0" step="1" value="${escapeHtml(lessonModalState.videoPauseTimestamp)}" placeholder="${st('modal.fields.pauseTimestampPlaceholder') || 'Vazio = pergunta final (após o vídeo)'}">
+                  <small>${st('modal.fields.pauseTimestampHint') || 'Deixe vazio para exibir a pergunta após o vídeo. Preencha com o segundo exato para pausar o vídeo naquele momento.'}</small>
+                </label>
+                <label class="new-course-field">
                   <span>${st('modal.fields.videoQuestion')} <em>*</em></span>
                   <textarea id="lesson-video-question" maxlength="70" placeholder="${st('modal.fields.videoQuestionPlaceholder')}" class="${lessonModalState.videoQuestionError ? 'is-invalid' : ''}">${escapeHtml(lessonModalState.videoQuestion)}</textarea>
                   <small>${videoQuestionCounter}</small>
@@ -3149,6 +3158,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
           lessonModalState.videoFileName = ''
           selectedLessonVideo = null
           lessonModalState.hasVideoQuestion = true
+          lessonModalState.videoPauseTimestamp = ''
           lessonModalState.videoQuestion = ''
           lessonModalState.videoAlternatives = ['', '']
           lessonModalState.correctVideoAlternativeIndex = 0
@@ -3164,6 +3174,11 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       lessonModalState.videoAlternativesError = false
       lessonModalState.videoCorrectAlternativeError = false
       renderLessonModal()
+    })
+
+    const lessonPauseTimestampInput = document.getElementById('lesson-pause-timestamp') as HTMLInputElement | null
+    lessonPauseTimestampInput?.addEventListener('input', () => {
+      lessonModalState.videoPauseTimestamp = lessonPauseTimestampInput.value
     })
 
     lessonVideoQuestionInput?.addEventListener('input', () => {
@@ -3290,12 +3305,16 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
         const correctAnswer = lessonModalState.contentType === 'video' && lessonModalState.hasVideoQuestion
           ? (lessonModalState.correctVideoAlternativeIndex ?? 0)
           : 0
+        const pauseTimestamp = lessonModalState.contentType === 'video' && lessonModalState.hasVideoQuestion && lessonModalState.videoPauseTimestamp.trim().length > 0
+          ? parseInt(lessonModalState.videoPauseTimestamp, 10)
+          : null
 
         if (lessonModalState.editingActivityId) {
           const updated = await activitiesApi.updateActivity(lessonModalState.editingActivityId, {
             title: lessonModalState.name.trim(),
             type: activityType,
             order: nextOrder,
+            pauseTimestamp,
             question: lessonModalState.contentType === 'video' && lessonModalState.hasVideoQuestion
               ? lessonModalState.videoQuestion.trim()
               : '',
@@ -3317,6 +3336,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
             title: lessonModalState.name.trim(),
             type: activityType,
             order: nextOrder,
+            pauseTimestamp,
             question: lessonModalState.contentType === 'video' && lessonModalState.hasVideoQuestion
               ? lessonModalState.videoQuestion.trim()
               : '',
@@ -4020,8 +4040,9 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
                 : 'is-exercise'
 
             return `
-              <div class="section-activity-card" data-section-id="${section.id}" data-activity-id="${activity.id}">
+              <div class="section-activity-card" draggable="true" data-section-id="${section.id}" data-activity-id="${activity.id}">
                 <div class="section-activity-main">
+                  <span class="section-activity-drag-handle" aria-hidden="true">⠿</span>
                   <span class="section-activity-icon ${activityTypeClass}" aria-hidden="true">${activityIcon}</span>
                   <span class="section-activity-name">${escapeHtml(activity.title)}</span>
                 </div>
@@ -4146,6 +4167,73 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
         const sectionId = button.dataset.sectionId
         if (!sectionId) return
         openDeleteSectionModal(sectionId)
+      })
+    })
+
+    // Drag-and-drop reordering for activity cards
+    let draggedActivityId: string | null = null
+    let draggedSectionId: string | null = null
+
+    sectionsList.querySelectorAll<HTMLDivElement>('.section-activity-card').forEach((card) => {
+      card.addEventListener('dragstart', (e) => {
+        draggedActivityId = card.dataset.activityId ?? null
+        draggedSectionId = card.dataset.sectionId ?? null
+        card.classList.add('is-dragging')
+        e.dataTransfer?.setData('text/plain', draggedActivityId ?? '')
+      })
+
+      card.addEventListener('dragend', () => {
+        card.classList.remove('is-dragging')
+        sectionsList!.querySelectorAll('.section-activity-card').forEach((c) => c.classList.remove('is-drag-over'))
+        draggedActivityId = null
+        draggedSectionId = null
+      })
+
+      card.addEventListener('dragover', (e) => {
+        e.preventDefault()
+        const targetSectionId = card.dataset.sectionId
+        if (targetSectionId !== draggedSectionId) return
+        card.classList.add('is-drag-over')
+      })
+
+      card.addEventListener('dragleave', () => {
+        card.classList.remove('is-drag-over')
+      })
+
+      card.addEventListener('drop', async (e) => {
+        e.preventDefault()
+        card.classList.remove('is-drag-over')
+
+        const targetActivityId = card.dataset.activityId
+        const targetSectionId = card.dataset.sectionId
+        if (!draggedActivityId || !targetActivityId || !targetSectionId || targetSectionId !== draggedSectionId) return
+        if (draggedActivityId === targetActivityId) return
+
+        const section = sections.find((s) => s.id === targetSectionId)
+        if (!section) return
+
+        const fromIndex = section.activities.findIndex((a) => a.id === draggedActivityId)
+        const toIndex = section.activities.findIndex((a) => a.id === targetActivityId)
+        if (fromIndex < 0 || toIndex < 0) return
+
+        // Reorder in local array
+        const [moved] = section.activities.splice(fromIndex, 1)
+        section.activities.splice(toIndex, 0, moved)
+
+        // Update order values and persist to backend
+        const updatePromises = section.activities.map((activity, index) => {
+          activity.order = index
+          return activitiesApi.updateActivity(activity.id, { order: index })
+        })
+
+        renderSections()
+        persistSectionsLocalSnapshot()
+
+        try {
+          await Promise.all(updatePromises)
+        } catch {
+          toast(t('courses.home.feedback.actionError'), 'error')
+        }
       })
     })
   }
