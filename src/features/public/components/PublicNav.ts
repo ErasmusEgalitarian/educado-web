@@ -87,6 +87,10 @@ export function setupPublicMobileSidebar(currentPath: string) {
 
       <div class="public-mobile-sidebar-divider"></div>
 
+      <div id="public-mobile-lang-switcher" class="public-mobile-sidebar-lang"></div>
+
+      <div class="public-mobile-sidebar-divider"></div>
+
       <div class="public-mobile-sidebar-actions">
         <a href="${routes.auth}" class="public-mobile-sidebar-login">${t('publicNav.login')}</a>
         <a href="${routes.auth}" class="public-mobile-sidebar-register">${t('publicNav.register')}</a>
@@ -94,6 +98,11 @@ export function setupPublicMobileSidebar(currentPath: string) {
     </aside>
   `
   document.body.appendChild(overlay)
+
+  const mobileLangContainer = document.getElementById('public-mobile-lang-switcher')
+  if (mobileLangContainer) {
+    mountLanguageSwitcher(mobileLangContainer)
+  }
 
   const openSidebar = () => {
     overlay.classList.add('is-open')

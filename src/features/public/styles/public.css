@@ -2187,6 +2187,22 @@ html:has(.about-page) {
   background: #e0e0e0;
 }
 
+.public-mobile-sidebar-lang {
+  padding: 0 8px;
+}
+
+.public-mobile-sidebar-lang .language-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.public-mobile-sidebar-lang .language-switcher-select {
+  flex: 1;
+  min-width: 0;
+}
+
 .public-mobile-sidebar-actions {
   display: flex;
   flex-direction: column;
@@ -2279,12 +2295,28 @@ html:has(.about-page) {
    ============================================================ */
 
 @media (max-width: 768px) {
+  html:has(.landing-page),
+  html:has(.about-page) {
+    scroll-snap-type: none;
+  }
+
+  .landing-page > section,
+  .about-page > section,
+  .landing-page > footer,
+  .about-page > footer {
+    scroll-snap-align: none;
+  }
+
   .public-nav {
     display: none;
   }
 
   .public-mobile-hamburger {
     display: flex;
+  }
+
+  #public-lang-switcher {
+    display: none;
   }
 
   .public-header-login-btn,
