@@ -3,6 +3,7 @@ import { ApiError } from '@/shared/api/http'
 import { t } from '@/shared/i18n'
 import { toast } from '@/shared/ui/toast'
 import { routes } from '@/app/routes'
+import { navigate } from '@/app/router'
 import '@/features/admin/styles/admin-user-review.css'
 
 type ReviewSection = 'motivations' | 'academic' | 'professional'
@@ -304,7 +305,7 @@ export function renderAdminUserReviewPage(container: HTMLElement) {
   let isSubmittingDecision = false
 
   const navigateBack = () => {
-    window.location.assign(routes.adminUsers)
+    navigate(routes.adminUsers)
   }
 
   const render = () => {
@@ -748,7 +749,7 @@ export function renderAdminUserReviewPage(container: HTMLElement) {
           sessionStorage.setItem(REVIEW_RESULT_STORAGE_KEY, 'rejected')
         }
 
-        window.location.assign(routes.adminUsers)
+        navigate(routes.adminUsers)
       } catch (error) {
         const message = getReviewTransitionErrorMessage(error)
         rejectReasonError = decisionModal === 'reject' ? message : ''

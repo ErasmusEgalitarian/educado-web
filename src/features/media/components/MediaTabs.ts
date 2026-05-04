@@ -1,4 +1,5 @@
 import { t } from '@/shared/i18n'
+import { navigate } from '@/app/router'
 
 export type MediaTabType = 'courses' | 'media-bank' | 'dashboard'
 export type AppTabType = MediaTabType | 'admin'
@@ -94,13 +95,13 @@ export class MediaTabs {
     tabs.setActiveTab(activeTab)
     tabs.setOnTabChange((tab) => {
       if (tab === 'courses') {
-        window.location.href = coursesPath
+        navigate(coursesPath)
       } else if (tab === 'media-bank') {
-        window.location.href = mediaBankPath
+        navigate(mediaBankPath)
       } else if (tab === 'dashboard') {
-        window.location.href = dashboardPath
+        navigate(dashboardPath)
       } else if (tab === 'admin' && adminPath) {
-        window.location.href = adminPath
+        navigate(adminPath)
       }
     })
     tabs.render()

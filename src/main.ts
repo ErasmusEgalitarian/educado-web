@@ -2,7 +2,7 @@ import '@/app/styles/globals.css'
 import { renderAuthLanding } from '@/features/auth'
 import { mountLanguageSwitcher } from '@/shared/ui/languageSwitcher'
 import { routes } from '@/app/routes'
-import { renderHomePage } from '@/app/pages/HomePage'
+import { destroyHomePage, renderHomePage } from '@/app/pages/HomePage'
 import { clearAccessToken, getAccessToken, getCurrentUser } from '@/shared/api/auth-session'
 import { subscribeLanguage, t } from '@/shared/i18n'
 import { MediaBankPage } from '@/features/media'
@@ -27,24 +27,65 @@ import {
 import '@/features/student/styles/mobile.css'
 import { renderLandingPage, renderAboutPage, renderSolutionPage, renderInstitutionsPage, renderContactPage } from '@/features/public'
 import { renderPublicNav, renderPublicHeaderRight, setupPublicMobileSidebar } from '@/features/public/components/PublicNav'
+import { navigate, replace, subscribeToRoute } from '@/app/router'
+import { UploadStatusWidget } from '@/features/media/components/UploadStatusWidget'
 import '@/features/public/styles/public.css'
 
+type PageCleanup = () => void
+
 let currentLanguageListenerCleanup: (() => void) | null = null
+let currentPageCleanup: PageCleanup | null = null
 let closeDropdownListener: ((e: Event) => void) | null = null
 let closeMobileSidebarOnResize: (() => void) | null = null
+let closeMobileSidebarOnEscape: ((e: KeyboardEvent) => void) | null = null
+let uploadStatusWidget: UploadStatusWidget | null = null
+let renderVersion = 0
+
+function isAuthenticatedPath(pathname: string) {
+  return pathname === routes.home ||
+    pathname === routes.adminHome ||
+    pathname === routes.adminUsers ||
+    pathname === routes.adminInstitutions ||
+    pathname === routes.adminUserReview ||
+    pathname === routes.mediaBank ||
+    pathname === routes.dashboard ||
+    pathname === routes.profile
+}
+
+function isPublicPath(pathname: string) {
+  return pathname === routes.landing ||
+    pathname === routes.about ||
+    pathname === routes.solution ||
+    pathname === routes.institutions ||
+    pathname === routes.contact ||
+    pathname === routes.auth
+}
+
+function teardownMobileSidebar() {
+  document.querySelector('.mobile-sidebar-overlay')?.remove()
+  document.querySelector('.mobile-hamburger-btn')?.remove()
+  document.body.style.overflow = ''
+
+  if (closeMobileSidebarOnResize) {
+    window.removeEventListener('resize', closeMobileSidebarOnResize)
+    closeMobileSidebarOnResize = null
+  }
+
+  if (closeMobileSidebarOnEscape) {
+    document.removeEventListener('keydown', closeMobileSidebarOnEscape)
+    closeMobileSidebarOnEscape = null
+  }
+}
 
 function setupDropdownToggle() {
-  // Clean up previous listener
   if (closeDropdownListener) {
     document.removeEventListener('click', closeDropdownListener)
   }
 
   const userButton = document.querySelector('.header-user-button') as HTMLButtonElement | null
   const userDropdown = document.querySelector('.header-user-dropdown') as HTMLElement | null
-
   if (!userButton || !userDropdown) return
 
-  // Click handler for button
   const handleButtonClick = (e: Event) => {
     e.stopPropagation()
     const isVisible = userDropdown.style.display !== 'none'
@@ -52,12 +93,10 @@ function setupDropdownToggle() {
     userButton.setAttribute('aria-expanded', isVisible ? 'false' : 'true')
   }
 
-  // Prevent closing when clicking inside dropdown
   const handleDropdownClick = (e: Event) => {
     e.stopPropagation()
   }
 
-  // Close dropdown when clicking outside
   closeDropdownListener = (e: Event) => {
     const target = e.target as HTMLElement
     if (!target.closest('.header-user-area')) {
@@ -81,19 +120,11 @@ function setupMobileSidebar(options: {
   avatarUrl: string
   navTabs: { id: string; label: string; href: string; active: boolean }[]
 }) {
-  // Remove previous sidebar if any
-  document.querySelector('.mobile-sidebar-overlay')?.remove()
-  document.querySelector('.mobile-hamburger-btn')?.remove()
-
-  // Clean up previous resize listener
-  if (closeMobileSidebarOnResize) {
-    window.removeEventListener('resize', closeMobileSidebarOnResize)
-  }
+  teardownMobileSidebar()
 
   const headerLeft = document.querySelector('.header-left')
   if (!headerLeft) return
 
-  // Add hamburger button
   const hamburger = document.createElement('button')
   hamburger.className = 'mobile-hamburger-btn'
   hamburger.type = 'button'
@@ -101,12 +132,11 @@ function setupMobileSidebar(options: {
   hamburger.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#28363e" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`
   headerLeft.insertBefore(hamburger, headerLeft.firstChild)
 
-  // Create sidebar overlay
   const overlay = document.createElement('div')
   overlay.className = 'mobile-sidebar-overlay'
 
-  const navItems = options.navTabs.map(tab => `
-    <a href="${tab.href}" class="mobile-sidebar-nav-item${tab.active ? ' is-active' : ''}">${tab.label}</a>
+  const navItems = options.navTabs.map((tab) => `
+    <a href="${tab.href}" class="mobile-sidebar-nav-item${tab.active ? ' is-active' : ''}" data-route="${tab.href}">${tab.label}</a>
   `).join('')
 
   overlay.innerHTML = `
@@ -144,9 +174,9 @@ function setupMobileSidebar(options: {
       </div>
     </aside>
   `
+
   document.body.appendChild(overlay)
 
-  // Mount language switcher inside sidebar
   const sidebarLangContainer = document.getElementById('mobile-sidebar-language-switcher')
   if (sidebarLangContainer) {
     mountLanguageSwitcher(sidebarLangContainer)
@@ -168,7 +198,15 @@ function setupMobileSidebar(options: {
     if (e.target === overlay) closeSidebar()
   })
 
-  // On mobile, clicking user avatar/name in header opens sidebar instead of dropdown
+  overlay.querySelectorAll<HTMLAnchorElement>('.mobile-sidebar-nav-item').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault()
+      const targetRoute = link.dataset.route
+      closeSidebar()
+      if (targetRoute) navigate(targetRoute)
+    })
+  })
+
   const userButton = document.querySelector('.header-user-button') as HTMLElement | null
   if (userButton) {
     userButton.addEventListener('click', (e) => {
@@ -184,7 +222,7 @@ function setupMobileSidebar(options: {
 
   document.getElementById('mobile-sidebar-edit-profile')?.addEventListener('click', () => {
     closeSidebar()
-    window.location.assign(routes.profile)
+    navigate(routes.profile)
   })
 
   document.getElementById('mobile-sidebar-logout')?.addEventListener('click', () => {
@@ -193,14 +231,13 @@ function setupMobileSidebar(options: {
     window.location.assign('/')
   })
 
-  // Close sidebar on ESC
-  document.addEventListener('keydown', (e) => {
+  closeMobileSidebarOnEscape = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && overlay.classList.contains('is-open')) {
       closeSidebar()
     }
-  })
+  }
+  document.addEventListener('keydown', closeMobileSidebarOnEscape)
 
-  // Close sidebar if window resizes past mobile breakpoint
   closeMobileSidebarOnResize = () => {
     if (window.innerWidth > 768 && overlay.classList.contains('is-open')) {
       closeSidebar()
@@ -214,289 +251,358 @@ function setupHeaderLogoNavigation(isAuthenticatedRoute: boolean) {
   if (!logo) return
 
   const currentUser = getCurrentUser()
-  const targetRoute = isAuthenticatedRoute ? (currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home) : '/'
+  const targetRoute = isAuthenticatedRoute ? (currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home) : routes.landing
 
   logo.setAttribute('role', 'button')
   logo.setAttribute('tabindex', '0')
 
   logo.onclick = () => {
     if (window.location.pathname === targetRoute) return
-    window.location.assign(targetRoute)
+    navigate(targetRoute)
   }
 
   logo.onkeydown = (event: KeyboardEvent) => {
     if (event.key !== 'Enter' && event.key !== ' ') return
     event.preventDefault()
     if (window.location.pathname === targetRoute) return
-    window.location.assign(targetRoute)
+    navigate(targetRoute)
   }
 }
 
-async function initializeApp() {
-  const currentPath = window.location.pathname
-  const isCreatorHome = currentPath === routes.home
-  const isAdminHome = currentPath === routes.adminHome
-  const isAdminUsers = currentPath === routes.adminUsers
-  const isAdminInstitutions = currentPath === routes.adminInstitutions
-  const isAdminUserReview = currentPath === routes.adminUserReview
-  const isMediaBank = currentPath === routes.mediaBank
-  const isDashboard = currentPath === routes.dashboard
-  const isProfile = currentPath === routes.profile
+function ensureUploadStatusWidget() {
+  if (uploadStatusWidget) return
 
-  // Public routes
-  const isLanding = currentPath === routes.landing
-  const isAbout = currentPath === routes.about
-  const isSolution = currentPath === routes.solution
-  const isInstitutions = currentPath === routes.institutions
-  const isContact = currentPath === routes.contact
-  const isAuth = currentPath === routes.auth
-  const isPublicRoute = isLanding || isAbout || isSolution || isInstitutions || isContact || isAuth
+  const container = document.createElement('div')
+  container.id = 'global-upload-status-widget'
+  document.body.appendChild(container)
 
-  // Redirect authenticated users away from landing to their home
-  if (isLanding && getAccessToken()) {
-    const user = getCurrentUser()
-    window.location.assign(user?.role === 'ADMIN' ? routes.adminHome : routes.home)
+  uploadStatusWidget = new UploadStatusWidget(container)
+  uploadStatusWidget.mount()
+}
+
+function cleanupCurrentPage(root: HTMLElement) {
+  currentPageCleanup?.()
+  currentPageCleanup = null
+  root.innerHTML = ''
+}
+
+function setHeaderVisibility(showHeader: boolean) {
+  const appHeader = document.querySelector('.app-header') as HTMLElement | null
+  if (!appHeader) return
+  appHeader.style.display = showHeader ? '' : 'none'
+}
+
+function renderAuthenticatedHeader(pathname: string) {
+  const appHeader = document.querySelector('.app-header')
+  const languageSwitcherContainer = document.getElementById('language-switcher')
+  if (!appHeader || !languageSwitcherContainer) return
+
+  setHeaderVisibility(true)
+  appHeader.classList.add('private-header')
+  appHeader.classList.remove('public-header')
+
+  const user = getCurrentUser()
+  const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : 'User Name'
+  const email = user?.email ?? 'user@email.com'
+  const initials = user ? `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase() : 'UN'
+  const avatarUrl = user?.avatarMediaId
+    ? `${import.meta.env.VITE_API_URL ?? 'http://localhost:5001'}/media/${user.avatarMediaId}/stream?token=${getAccessToken() ?? ''}`
+    : ''
+
+  languageSwitcherContainer.innerHTML = `
+    <div class="header-user-area">
+      <img src="/icons/bell.png" alt="Notifications" class="header-bell-icon" width="24" height="24">
+      <button class="header-user-button" type="button" aria-haspopup="menu" aria-expanded="false">
+        <div class="header-user-info">
+          <strong>${fullName}</strong>
+          <small>${email}</small>
+        </div>
+        <div class="header-user-avatar">${avatarUrl ? `<img src="${avatarUrl}" alt="${fullName}" class="header-avatar-img">` : initials}</div>
+      </button>
+      <div class="header-user-dropdown" role="menu" style="display: none;">
+        <div class="header-profile-card">
+          <div class="header-profile-avatar">
+            ${avatarUrl ? `<img src="${avatarUrl}" alt="${fullName}">` : `<span>${initials}</span>`}
+          </div>
+          <div class="header-profile-info">
+            <strong>${fullName}</strong>
+            <small>${email}</small>
+          </div>
+        </div>
+        <div class="header-dropdown-divider" aria-hidden="true"></div>
+        <div id="header-language-switcher" class="header-dropdown-content"></div>
+        <div class="header-dropdown-divider" aria-hidden="true"></div>
+        <button id="header-edit-profile-btn" class="header-menu-btn" type="button">${t('common.editProfile')}</button>
+        <div class="header-dropdown-divider" aria-hidden="true"></div>
+        <button id="header-logout-btn" class="header-logout-btn" type="button">${t('common.logout')}</button>
+      </div>
+    </div>
+  `
+
+  const headerLanguageSwitcher = document.getElementById('header-language-switcher')
+  if (headerLanguageSwitcher) {
+    mountLanguageSwitcher(headerLanguageSwitcher)
+  }
+
+  document.getElementById('header-edit-profile-btn')?.addEventListener('click', () => {
+    navigate(routes.profile)
+  })
+
+  document.getElementById('header-logout-btn')?.addEventListener('click', () => {
+    clearAccessToken()
+    window.location.assign('/')
+  })
+
+  setTimeout(() => {
+    setupDropdownToggle()
+  }, 0)
+
+  const isAdmin = user?.role === 'ADMIN'
+  const coursesPath = isAdmin ? routes.adminHome : routes.home
+  const navTabs: { id: string; label: string; href: string; active: boolean }[] = [
+    { id: 'courses', label: t('courses.home.mediaBank.headerTabs.courses'), href: coursesPath, active: pathname === routes.home || pathname === routes.adminHome || pathname === routes.profile },
+    { id: 'media-bank', label: t('courses.home.mediaBank.headerTabs.mediaBank'), href: routes.mediaBank, active: pathname === routes.mediaBank },
+    { id: 'dashboard', label: t('courses.home.mediaBank.headerTabs.dashboard'), href: routes.dashboard, active: pathname === routes.dashboard },
+  ]
+
+  if (isAdmin) {
+    navTabs.push({
+      id: 'admin',
+      label: t('courses.home.mediaBank.headerTabs.admin'),
+      href: routes.adminUsers,
+      active: pathname === routes.adminUsers || pathname === routes.adminInstitutions || pathname === routes.adminUserReview,
+    })
+  }
+
+  setupMobileSidebar({ fullName, email, initials, avatarUrl, navTabs })
+  setupHeaderLogoNavigation(true)
+}
+
+function renderPublicHeader(pathname: string) {
+  const appHeader = document.querySelector('.app-header')
+  const languageSwitcherContainer = document.getElementById('language-switcher')
+  const headerTabsContainer = document.getElementById('header-tabs-container')
+  if (!appHeader || !languageSwitcherContainer || !headerTabsContainer) return
+
+  teardownMobileSidebar()
+  setHeaderVisibility(true)
+  appHeader.classList.add('public-header')
+  appHeader.classList.remove('private-header')
+  headerTabsContainer.innerHTML = ''
+
+  renderPublicNav(headerTabsContainer, { currentPath: pathname })
+  renderPublicHeaderRight(languageSwitcherContainer)
+  setupPublicMobileSidebar(pathname)
+  setupHeaderLogoNavigation(false)
+}
+
+function renderLanguageOnlyHeader() {
+  const appHeader = document.querySelector('.app-header')
+  const languageSwitcherContainer = document.getElementById('language-switcher')
+  const headerTabsContainer = document.getElementById('header-tabs-container')
+  if (!appHeader || !languageSwitcherContainer || !headerTabsContainer) return
+
+  teardownMobileSidebar()
+  setHeaderVisibility(true)
+  headerTabsContainer.innerHTML = ''
+  appHeader.classList.remove('private-header')
+  appHeader.classList.add('public-header')
+  mountLanguageSwitcher(languageSwitcherContainer)
+  setupHeaderLogoNavigation(false)
+}
+
+async function mountAuthenticatedPage(root: HTMLElement, pathname: string) {
+  const currentUser = getCurrentUser()
+  const coursesPath = currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home
+  const adminPath = currentUser?.role === 'ADMIN' ? routes.adminUsers : undefined
+
+  if (pathname === routes.home) {
+    MediaTabs.renderInHeader('courses', { coursesPath: routes.home })
+    renderHomePage(root, 'USER')
+    currentPageCleanup = destroyHomePage
     return
   }
 
-  // Student mobile routes
-  const isStudentRoute = currentPath.startsWith('/student/')
-  const isStudentRegister = currentPath === routes.studentRegister
-  const isStudentMyCourses = currentPath === routes.studentMyCourses
-  const isStudentExplore = currentPath === routes.studentExplore
-  const isStudentProfile = currentPath === routes.studentProfile
-  const isStudentCourseDetail = currentPath === routes.studentCourseDetail
-  const isStudentCertificates = currentPath === routes.studentCertificates
-  const isStudentLeaderboard = currentPath === routes.studentLeaderboard
-  const isStudentRating = currentPath === routes.studentRating
-  const isStudentEditProfile = currentPath === routes.studentEditProfile
-
-  const isAuthenticatedRoute = isCreatorHome || isAdminHome || isAdminUsers || isAdminInstitutions || isAdminUserReview || isMediaBank || isDashboard || isProfile
-
-  setupHeaderLogoNavigation(isAuthenticatedRoute)
-
-  const appHeader = document.querySelector('.app-header')
-  const languageSwitcherContainer = document.getElementById('language-switcher')
-
-  if (appHeader) {
-    appHeader.classList.toggle('public-header', !isAuthenticatedRoute)
-    appHeader.classList.toggle('private-header', isAuthenticatedRoute)
-  }
-
-  if (languageSwitcherContainer) {
-    if (isAuthenticatedRoute) {
-      const user = getCurrentUser()
-      const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : 'User Name'
-      const email = user?.email ?? 'user@email.com'
-      const initials = user ? `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase() : 'UN'
-
-      const avatarUrl = user?.avatarMediaId
-        ? `${import.meta.env.VITE_API_URL ?? 'http://localhost:5001'}/media/${user.avatarMediaId}/stream?token=${getAccessToken() ?? ''}`
-        : ''
-
-      languageSwitcherContainer.innerHTML = `
-        <div class="header-user-area">
-          <img src="/icons/bell.png" alt="Notifications" class="header-bell-icon" width="24" height="24">
-          <button class="header-user-button" type="button" aria-haspopup="menu" aria-expanded="false">
-            <div class="header-user-info">
-              <strong>${fullName}</strong>
-              <small>${email}</small>
-            </div>
-            <div class="header-user-avatar">${avatarUrl ? `<img src="${avatarUrl}" alt="${fullName}" class="header-avatar-img">` : initials}</div>
-          </button>
-          <div class="header-user-dropdown" role="menu" style="display: none;">
-            <div class="header-profile-card">
-              <div class="header-profile-avatar">
-                ${avatarUrl ? `<img src="${avatarUrl}" alt="${fullName}">` : `<span>${initials}</span>`}
-              </div>
-              <div class="header-profile-info">
-                <strong>${fullName}</strong>
-                <small>${email}</small>
-              </div>
-            </div>
-            <div class="header-dropdown-divider" aria-hidden="true"></div>
-            <div id="header-language-switcher" class="header-dropdown-content"></div>
-            <div class="header-dropdown-divider" aria-hidden="true"></div>
-            <button id="header-edit-profile-btn" class="header-menu-btn" type="button">${t('common.editProfile')}</button>
-            <div class="header-dropdown-divider" aria-hidden="true"></div>
-            <button id="header-logout-btn" class="header-logout-btn" type="button">${t('common.logout')}</button>
-          </div>
-        </div>
-      `
-      
-      const headerLanguageSwitcher = document.getElementById('header-language-switcher')
-      if (headerLanguageSwitcher) {
-        mountLanguageSwitcher(headerLanguageSwitcher)
-      }
-
-      const headerEditProfileButton = document.getElementById('header-edit-profile-btn')
-      headerEditProfileButton?.addEventListener('click', () => {
-        window.location.assign(routes.profile)
-      })
-
-      const headerLogoutButton = document.getElementById('header-logout-btn')
-      headerLogoutButton?.addEventListener('click', () => {
-        clearAccessToken()
-        window.location.assign('/')
-      })
-
-      // Setup dropdown after DOM is ready
-      setTimeout(() => {
-        setupDropdownToggle()
-      }, 0)
-
-      // Build mobile sidebar nav tabs
-      const isAdmin = user?.role === 'ADMIN'
-      const coursesPath = isAdmin ? routes.adminHome : routes.home
-      const sidebarNavTabs: { id: string; label: string; href: string; active: boolean }[] = [
-        { id: 'courses', label: t('courses.home.mediaBank.headerTabs.courses'), href: coursesPath, active: isCreatorHome || isAdminHome || isProfile },
-        { id: 'media-bank', label: t('courses.home.mediaBank.headerTabs.mediaBank'), href: routes.mediaBank, active: isMediaBank },
-        { id: 'dashboard', label: t('courses.home.mediaBank.headerTabs.dashboard'), href: routes.dashboard, active: isDashboard },
-      ]
-      if (isAdmin) {
-        sidebarNavTabs.push({ id: 'admin', label: t('courses.home.mediaBank.headerTabs.admin'), href: routes.adminUsers, active: isAdminUsers || isAdminInstitutions || isAdminUserReview })
-      }
-
-      setupMobileSidebar({ fullName, email, initials, avatarUrl, navTabs: sidebarNavTabs })
-    } else if (isPublicRoute) {
-      const headerTabsContainer = document.getElementById('header-tabs-container')
-      if (headerTabsContainer) {
-        renderPublicNav(headerTabsContainer, { currentPath })
-      }
-      renderPublicHeaderRight(languageSwitcherContainer)
-      setupPublicMobileSidebar(currentPath)
-    } else {
-      mountLanguageSwitcher(languageSwitcherContainer)
-    }
-  }
-
-  const root = document.getElementById('app-root')
-  if (!root) return
-
-  if (isCreatorHome) {
-    MediaTabs.renderInHeader('courses', { coursesPath: routes.home })
-    renderHomePage(root, 'USER')
-  } else if (isAdminHome) {
+  if (pathname === routes.adminHome) {
     MediaTabs.renderInHeader('courses', { coursesPath: routes.adminHome, adminPath: routes.adminUsers })
     renderHomePage(root, 'ADMIN')
-  } else if (isAdminUsers) {
+    currentPageCleanup = destroyHomePage
+    return
+  }
+
+  if (pathname === routes.adminUsers) {
     MediaTabs.renderInHeader('admin', { coursesPath: routes.adminHome, adminPath: routes.adminUsers })
     renderAdminUsersPage(root)
-  } else if (isAdminInstitutions) {
+    return
+  }
+
+  if (pathname === routes.adminInstitutions) {
     MediaTabs.renderInHeader('admin', { coursesPath: routes.adminHome, adminPath: routes.adminUsers })
     renderAdminInstitutionsPage(root)
-  } else if (isAdminUserReview) {
+    return
+  }
+
+  if (pathname === routes.adminUserReview) {
     MediaTabs.renderInHeader('admin', { coursesPath: routes.adminHome, adminPath: routes.adminUsers })
     renderAdminUserReviewPage(root)
-  } else if (isMediaBank) {
-    const currentUser = getCurrentUser()
-    const coursesPath = currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home
-    const adminPath = currentUser?.role === 'ADMIN' ? routes.adminUsers : undefined
+    return
+  }
+
+  if (pathname === routes.mediaBank) {
     MediaTabs.renderInHeader('media-bank', { coursesPath, adminPath })
     const mediaBankPage = new MediaBankPage(root)
     await mediaBankPage.init()
-  } else if (isDashboard) {
-    const currentUser = getCurrentUser()
-    const coursesPath = currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home
-    const adminPath = currentUser?.role === 'ADMIN' ? routes.adminUsers : undefined
+    currentPageCleanup = () => mediaBankPage.destroy()
+    return
+  }
+
+  if (pathname === routes.dashboard) {
     MediaTabs.renderInHeader('dashboard', { coursesPath, adminPath })
     renderDashboardPage(root)
-  } else if (isProfile) {
-    const currentUser = getCurrentUser()
-    const coursesPath = currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home
-    const adminPath = currentUser?.role === 'ADMIN' ? routes.adminUsers : undefined
+    return
+  }
+
+  if (pathname === routes.profile) {
     MediaTabs.renderInHeader('courses', { coursesPath, adminPath })
     await renderEditProfilePage(root, {
-      onNavigateHome: () => {
-        history.pushState(null, '', currentUser?.role === 'ADMIN' ? routes.adminHome : routes.home)
-        MediaTabs.renderInHeader('courses', { coursesPath, adminPath })
-        renderHomePage(root, currentUser?.role === 'ADMIN' ? 'ADMIN' : 'USER')
-      },
+      onNavigateHome: () => navigate(coursesPath),
     })
-  } else if (isStudentRoute) {
-    // Student mobile routes — hide desktop header
-    const appHeader = document.querySelector('.app-header') as HTMLElement | null
-    if (appHeader) appHeader.style.display = 'none'
+    return
+  }
+}
 
-    if (isStudentRegister) {
+async function renderAppForCurrentRoute() {
+  const root = document.getElementById('app-root')
+  if (!root) return
+
+  const pathname = window.location.pathname
+  const isStudentRoute = pathname.startsWith('/student/')
+  const isAuthenticatedRoute = isAuthenticatedPath(pathname)
+  const isPublicRoute = isPublicPath(pathname)
+
+  if (pathname === routes.landing && getAccessToken()) {
+    const user = getCurrentUser()
+    replace(user?.role === 'ADMIN' ? routes.adminHome : routes.home)
+    return
+  }
+
+  if (isAuthenticatedRoute && !getAccessToken()) {
+    replace(routes.auth)
+    return
+  }
+
+  cleanupCurrentPage(root)
+
+  if (isAuthenticatedRoute) {
+    renderAuthenticatedHeader(pathname)
+    await mountAuthenticatedPage(root, pathname)
+    return
+  }
+
+  if (isStudentRoute) {
+    teardownMobileSidebar()
+    setHeaderVisibility(false)
+
+    if (pathname === routes.studentRegister) {
       renderStudentRegisterPage(root)
-    } else if (isStudentMyCourses) {
-      await renderMyCoursesPage(root)
-    } else if (isStudentExplore) {
-      await renderExplorePage(root)
-    } else if (isStudentProfile) {
-      await renderProfilePage(root)
-    } else if (isStudentCourseDetail) {
-      await renderCourseDetailPage(root)
-    } else if (isStudentCertificates) {
-      await renderCertificatesPage(root)
-    } else if (isStudentLeaderboard) {
-      await renderLeaderboardPage(root)
-    } else if (isStudentRating) {
-      await renderRatingPage(root)
-    } else if (isStudentEditProfile) {
-      await renderStudentEditProfilePage(root)
-    } else {
-      // Default student route
-      window.location.assign(routes.studentMyCourses)
+      return
     }
-  } else if (isLanding) {
-    renderLandingPage(root)
-  } else if (isAbout) {
-    renderAboutPage(root)
-  } else if (isSolution) {
-    renderSolutionPage(root)
-  } else if (isInstitutions) {
-    renderInstitutionsPage(root)
-  } else if (isContact) {
-    renderContactPage(root)
-  } else if (isAuth) {
+    if (pathname === routes.studentMyCourses) {
+      await renderMyCoursesPage(root)
+      return
+    }
+    if (pathname === routes.studentExplore) {
+      await renderExplorePage(root)
+      return
+    }
+    if (pathname === routes.studentProfile) {
+      await renderProfilePage(root)
+      return
+    }
+    if (pathname === routes.studentCourseDetail) {
+      await renderCourseDetailPage(root)
+      return
+    }
+    if (pathname === routes.studentCertificates) {
+      await renderCertificatesPage(root)
+      return
+    }
+    if (pathname === routes.studentLeaderboard) {
+      await renderLeaderboardPage(root)
+      return
+    }
+    if (pathname === routes.studentRating) {
+      await renderRatingPage(root)
+      return
+    }
+    if (pathname === routes.studentEditProfile) {
+      await renderStudentEditProfilePage(root)
+      return
+    }
+
+    window.location.assign(routes.studentMyCourses)
+    return
+  }
+
+  if (isPublicRoute) {
+    renderPublicHeader(pathname)
+
+    if (pathname === routes.landing) {
+      renderLandingPage(root)
+      return
+    }
+    if (pathname === routes.about) {
+      renderAboutPage(root)
+      return
+    }
+    if (pathname === routes.solution) {
+      renderSolutionPage(root)
+      return
+    }
+    if (pathname === routes.institutions) {
+      renderInstitutionsPage(root)
+      return
+    }
+    if (pathname === routes.contact) {
+      renderContactPage(root)
+      return
+    }
+
     renderAuthLanding(root)
-  } else {
-    window.location.assign(routes.landing)
+    return
+  }
+
+  renderLanguageOnlyHeader()
+  window.location.assign(routes.landing)
+}
+
+async function rerenderApplication() {
+  const requestId = ++renderVersion
+  showAppLoader()
+
+  try {
+    await renderAppForCurrentRoute()
+  } finally {
+    if (requestId === renderVersion) {
+      await hideAppLoader()
+    }
   }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  showAppLoader()
+  ensureUploadStatusWidget()
 
-  try {
-    await initializeApp()
-  } finally {
-    await hideAppLoader()
+  if (currentLanguageListenerCleanup) {
+    currentLanguageListenerCleanup()
   }
-  
-  // Subscribe to language changes on authenticated and public routes
-  const currentPath = window.location.pathname
-  const isPublicRoute =
-    currentPath === routes.landing ||
-    currentPath === routes.about ||
-    currentPath === routes.solution ||
-    currentPath === routes.institutions ||
-    currentPath === routes.contact ||
-    currentPath === routes.auth
-  const isAuthenticatedRoute =
-    currentPath === routes.home ||
-    currentPath === routes.adminHome ||
-    currentPath === routes.adminUsers ||
-    currentPath === routes.adminInstitutions ||
-    currentPath === routes.adminUserReview ||
-    currentPath === routes.mediaBank ||
-    currentPath === routes.dashboard ||
-    currentPath === routes.profile ||
-    currentPath.startsWith('/student/')
 
-  if (isAuthenticatedRoute || isPublicRoute) {
-    if (currentLanguageListenerCleanup) {
-      currentLanguageListenerCleanup()
-    }
-    currentLanguageListenerCleanup = subscribeLanguage(async () => {
-      showAppLoader()
-      try {
-        await initializeApp()
-      } finally {
-        await hideAppLoader()
-      }
-    })
-  }
+  currentLanguageListenerCleanup = subscribeLanguage(async () => {
+    await rerenderApplication()
+  })
+
+  subscribeToRoute(async () => {
+    await rerenderApplication()
+  })
+
+  await rerenderApplication()
 })

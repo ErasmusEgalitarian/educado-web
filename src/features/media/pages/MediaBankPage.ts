@@ -2,6 +2,7 @@ import '../styles/media-bank.css'
 import '../styles/media-bank-upload.css'
 import '../styles/media-bank-library.css'
 import { mediaApi, type MediaResponse } from '@/features/media/api/media.api'
+import { uploadManager, type UploadJob } from '@/features/media/services/upload-manager'
 import { getCurrentUser } from '@/shared/api/auth-session'
 import { ApiError } from '@/shared/api/http'
 import { t } from '@/shared/i18n'
@@ -29,6 +30,11 @@ const MEDIA_BANK_MODE_STORAGE_KEY = 'educado.mediaBank.mode'
 
 export class MediaBankPage {
   private container: HTMLElement
+  private isDestroyed = false
+  private unsubscribeCompleted: (() => void) | null = null
+  private unsubscribeFailed: (() => void) | null = null
+  private activeDeleteModalOverlay: HTMLElement | null = null
+  private activeDeleteModalKeydown: ((event: KeyboardEvent) => void) | null = null
   private readonly handleViewportResize = () => {
     if (!this.container.isConnected) {
       window.removeEventListener('resize', this.handleViewportResize)
@@ -58,11 +64,41 @@ export class MediaBankPage {
   }
 
   async init() {
+    this.isDestroyed = false
     this.render()
     this.setupEventListeners()
     window.addEventListener('resize', this.handleViewportResize)
+    this.unsubscribeCompleted = uploadManager.on('completed', (job) => {
+      void this.handleBackgroundUploadCompleted(job)
+    })
+    this.unsubscribeFailed = uploadManager.on('failed', (job) => {
+      this.handleBackgroundUploadFailed(job)
+    })
     this.updateViewportLayoutMetrics()
     await this.loadMediaItems()
+  }
+
+  destroy() {
+    this.isDestroyed = true
+    window.removeEventListener('resize', this.handleViewportResize)
+    this.unsubscribeCompleted?.()
+    this.unsubscribeFailed?.()
+    this.unsubscribeCompleted = null
+    this.unsubscribeFailed = null
+    this.clearMediaPreviewUrls()
+
+    if (this.uploadPreviewUrl) {
+      URL.revokeObjectURL(this.uploadPreviewUrl)
+      this.uploadPreviewUrl = null
+    }
+
+    if (this.activeDeleteModalKeydown) {
+      document.removeEventListener('keydown', this.activeDeleteModalKeydown)
+      this.activeDeleteModalKeydown = null
+    }
+
+    this.activeDeleteModalOverlay?.remove()
+    this.activeDeleteModalOverlay = null
   }
 
   private render() {
@@ -1083,6 +1119,26 @@ export class MediaBankPage {
     return t('courses.home.mediaBank.upload.errors.generic')
   }
 
+  private async handleBackgroundUploadCompleted(job: UploadJob) {
+    if (this.isDestroyed || job.source !== 'media-bank' || !job.result) return
+
+    const uploadedItemId = job.result.id ?? job.result._id ?? job.result.gridFsId
+    if (this.mediaItems.some((item) => item.id === uploadedItemId)) return
+
+    const uploadedItem = this.mapMediaResponseToItem(job.result)
+    await this.loadMediaPreviews([uploadedItem])
+    this.mediaItems = [uploadedItem, ...this.mediaItems]
+
+    if (this.mediaMode === 'library') {
+      this.renderGallery()
+    }
+  }
+
+  private handleBackgroundUploadFailed(job: UploadJob) {
+    if (this.isDestroyed || job.source !== 'media-bank') return
+    toast(job.error ?? t('courses.home.mediaBank.upload.background.failed'), 'error')
+  }
+
   private async handleUploadSubmit() {
     if (this.isSubmittingUpload || !this.pendingUploadFile) return
 
@@ -1099,43 +1155,21 @@ export class MediaBankPage {
 
     this.isSubmittingUpload = true
     this.updateUploadSubmitState()
-    toast(t('courses.home.mediaBank.upload.loading'), 'loading')
+    const fileToUpload = this.pendingUploadFile
+    const uploadedKind = fileToUpload.type.startsWith('video/') ? 'video' : 'image'
+    const metadataDraft = {
+      title: this.uploadDraft.title.trim(),
+      altText: this.uploadDraft.altText.trim(),
+      description: this.uploadDraft.description.trim(),
+    }
 
     try {
-      const uploadedKind = this.pendingUploadFile.type.startsWith('video/') ? 'video' : 'image'
-      const uploadedBinary = await mediaApi.uploadMedia({ file: this.pendingUploadFile })
-      const uploadedId = uploadedBinary.id ?? uploadedBinary._id ?? uploadedBinary.gridFsId
-
-      if (!uploadedId) {
-        throw new Error('Missing media id from upload response')
-      }
-
-      let persistedMetadata = uploadedBinary
-
-      try {
-        persistedMetadata = await mediaApi.createMediaMetadata(uploadedId, uploadedKind, {
-          title: this.uploadDraft.title.trim(),
-          altText: this.uploadDraft.altText.trim(),
-          description: this.uploadDraft.description.trim(),
-        })
-      } catch (metadataError) {
-        try {
-          await mediaApi.deleteMedia(uploadedId, uploadedKind)
-        } catch {
-          // ignore cleanup failure and return original metadata error
-        }
-
-        throw metadataError
-      }
-
-      const uploadedItem = this.mapMediaResponseToItem(persistedMetadata)
-      await this.loadMediaPreviews([uploadedItem])
-      this.mediaItems = [uploadedItem, ...this.mediaItems]
+      uploadManager.enqueue(fileToUpload, uploadedKind, metadataDraft, 'media-bank')
       this.resetUploadForm()
       this.setMediaMode('library')
       this.renderMediaBank(this.container.querySelector('#media-content') as HTMLElement)
       this.renderGallery()
-      toast(t('courses.home.mediaBank.upload.success'), 'success')
+      toast(t('courses.home.mediaBank.upload.background.started'), 'success')
     } catch (error) {
       toast(this.getUploadErrorMessage(error), 'error')
     } finally {
@@ -1249,6 +1283,8 @@ export class MediaBankPage {
       const close = (confirmed: boolean) => {
         overlay.remove()
         document.removeEventListener('keydown', handleEscape)
+        this.activeDeleteModalOverlay = null
+        this.activeDeleteModalKeydown = null
         resolve(confirmed)
       }
 
@@ -1270,6 +1306,8 @@ export class MediaBankPage {
       cancelButton?.addEventListener('click', () => close(false))
       confirmButton?.addEventListener('click', () => close(true))
 
+      this.activeDeleteModalOverlay = overlay
+      this.activeDeleteModalKeydown = handleEscape
       document.addEventListener('keydown', handleEscape)
       document.body.appendChild(overlay)
       cancelButton?.focus()

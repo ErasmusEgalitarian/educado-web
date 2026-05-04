@@ -2,6 +2,7 @@ import { clearAccessToken, getAccessToken, getCurrentUser, setCurrentUser } from
 import { authApi } from '@/features/auth/api/auth.api'
 import { mediaApi } from '@/features/media/api/media.api'
 import { routes } from '@/app/routes'
+import { navigate } from '@/app/router'
 import { toast } from '@/shared/ui/toast'
 import { getLanguage, t } from '@/shared/i18n'
 import flatpickr from 'flatpickr'
@@ -196,7 +197,7 @@ export async function renderEditProfilePage(root: HTMLElement, options?: EditPro
     if (options?.onNavigateHome) {
       options.onNavigateHome()
     } else {
-      window.location.assign(routes.home)
+      navigate(routes.home)
     }
   }
 

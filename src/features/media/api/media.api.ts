@@ -48,6 +48,121 @@ export interface PaginatedMediaResponse {
   total: number
 }
 
+export interface InitChunkedResponse {
+  id: string
+  chunkSize: number
+  totalParts: number
+}
+
+export interface UploadPartResponse {
+  partNumber: number
+  etag: string
+}
+
+export interface UploadPartProgress {
+  uploadId: string
+  partNumber: number
+  etag: string
+  chunkSize: number
+  completedParts: number
+  totalParts: number
+  uploadedBytes: number
+}
+
+export interface UploadVideoChunkedOptions {
+  signal?: AbortSignal
+  onPartCompleted?: (progress: UploadPartProgress) => void
+  abortOnError?: boolean
+}
+
+export interface UploadBinaryOptions {
+  signal?: AbortSignal
+}
+
+export function initVideoUpload(file: File, options?: UploadBinaryOptions) {
+  return api.post<InitChunkedResponse>(
+    '/media/videos/init',
+    {
+      filename: file.name,
+      contentType: file.type,
+      size: file.size,
+    },
+    { auth: true, signal: options?.signal }
+  )
+}
+
+export function uploadVideoPart(
+  uploadId: string,
+  partNumber: number,
+  chunk: Blob,
+  filename: string,
+  options?: UploadBinaryOptions,
+) {
+  const formData = new FormData()
+  formData.append('chunk', chunk, `${filename}.part${partNumber}`)
+
+  return api.post<UploadPartResponse>(
+    `/media/videos/${uploadId}/parts/${partNumber}`,
+    formData,
+    { auth: true, signal: options?.signal }
+  )
+}
+
+export function completeVideoUpload(uploadId: string, parts: UploadPartResponse[], options?: UploadBinaryOptions) {
+  return api.post<UploadMediaResponse>(
+    `/media/videos/${uploadId}/complete`,
+    { parts },
+    { auth: true, signal: options?.signal }
+  )
+}
+
+export function abortVideoUpload(uploadId: string) {
+  return api.post<void>(`/media/videos/${uploadId}/abort`, {}, { auth: true })
+}
+
+export function uploadImageBinary(file: File, options?: UploadBinaryOptions): Promise<UploadMediaResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post<UploadMediaResponse>('/media/images', formData, { auth: true, signal: options?.signal })
+}
+
+async function uploadVideoChunked(file: File, options?: UploadVideoChunkedOptions): Promise<UploadMediaResponse> {
+  const init = await initVideoUpload(file, options)
+  const parts: UploadPartResponse[] = []
+  let uploadedBytes = 0
+
+  try {
+    for (let partNumber = 1; partNumber <= init.totalParts; partNumber++) {
+      const start = (partNumber - 1) * init.chunkSize
+      const end = Math.min(start + init.chunkSize, file.size)
+      const chunk = file.slice(start, end)
+
+      const result = await uploadVideoPart(init.id, partNumber, chunk, file.name, options)
+      parts.push(result)
+      uploadedBytes += chunk.size
+
+      options?.onPartCompleted?.({
+        uploadId: init.id,
+        partNumber,
+        etag: result.etag,
+        chunkSize: chunk.size,
+        completedParts: parts.length,
+        totalParts: init.totalParts,
+        uploadedBytes,
+      })
+    }
+
+    return completeVideoUpload(init.id, parts, options)
+  } catch (error) {
+    if (options?.abortOnError !== false) {
+      abortVideoUpload(init.id).catch(() => {
+        /* ignore */
+      })
+    }
+    throw error
+  }
+}
+
 function toQueryString(query?: MediaListQuery): string {
   if (!query) return ''
 
@@ -76,19 +191,19 @@ export const mediaApi = {
     return mediaApi.getImageById(id)
   },
 
-  uploadImage: ({ file }: UploadMediaPayload) => {
-    const formData = new FormData()
-    formData.append('file', file)
+  initVideoUpload,
 
-    return api.post<UploadMediaResponse>('/media/images', formData, { auth: true })
-  },
+  uploadVideoPart,
 
-  uploadVideo: ({ file }: UploadMediaPayload) => {
-    const formData = new FormData()
-    formData.append('file', file)
+  completeVideoUpload,
 
-    return api.post<UploadMediaResponse>('/media/videos', formData, { auth: true })
-  },
+  abortVideoUpload,
+
+  uploadImageBinary,
+
+  uploadImage: ({ file }: UploadMediaPayload) => uploadImageBinary(file),
+
+  uploadVideo: ({ file }: UploadMediaPayload, options?: UploadVideoChunkedOptions) => uploadVideoChunked(file, options),
 
   uploadMedia: ({ file }: UploadMediaPayload) => {
     const kind = file.type.startsWith('video/') ? 'video' : 'image'

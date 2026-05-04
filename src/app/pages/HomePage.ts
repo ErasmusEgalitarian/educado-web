@@ -5,6 +5,7 @@ import { activitiesApi } from '@/features/courses/api/activities.api'
 import type { Activity, ActivityType, Course, CreateCourseInput, Section, Tag } from '@/features/courses/model/course.types'
 import { tagsApi } from '@/features/courses/api/tags.api'
 import { mediaApi, type MediaResponse } from '@/features/media/api/media.api'
+import { uploadManager, type UploadJob } from '@/features/media/services/upload-manager'
 import { ApiError } from '@/shared/api/http'
 import { toast } from '@/shared/ui/toast'
 import { getLanguage, t } from '@/shared/i18n'
@@ -22,6 +23,91 @@ const MONGO_ID_REGEX = /^[a-f\d]{24}$/i
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 type MediaErrorContext = 'course' | 'exercise'
+
+let homePageAbortController: AbortController | null = null
+let homePageCleanupCallbacks: Array<() => void> = []
+
+function ensureHomePageAbortController() {
+  if (!homePageAbortController || homePageAbortController.signal.aborted) {
+    homePageAbortController = new AbortController()
+  }
+
+  return homePageAbortController
+}
+
+function registerHomePageCleanup(callback: () => void) {
+  homePageCleanupCallbacks.push(callback)
+}
+
+function subscribeToHomePageUpload(
+  localId: string,
+  handlers: {
+    onCompleted?: (job: UploadJob) => void
+    onFailed?: (job: UploadJob) => void
+    onAborted?: (job: UploadJob) => void
+  },
+) {
+  const cleanupFns: Array<() => void> = []
+
+  const cleanup = () => {
+    while (cleanupFns.length > 0) {
+      cleanupFns.pop()?.()
+    }
+  }
+
+  cleanupFns.push(
+    uploadManager.on('completed', (job) => {
+      if (job.localId !== localId) return
+      cleanup()
+      handlers.onCompleted?.(job)
+    }),
+  )
+
+  cleanupFns.push(
+    uploadManager.on('failed', (job) => {
+      if (job.localId !== localId) return
+      cleanup()
+      handlers.onFailed?.(job)
+    }),
+  )
+
+  cleanupFns.push(
+    uploadManager.on('aborted', (job) => {
+      if (job.localId !== localId) return
+      cleanup()
+      handlers.onAborted?.(job)
+    }),
+  )
+
+  registerHomePageCleanup(cleanup)
+}
+
+export function destroyHomePage() {
+  homePageAbortController?.abort()
+  homePageAbortController = null
+
+  while (homePageCleanupCallbacks.length > 0) {
+    homePageCleanupCallbacks.pop()?.()
+  }
+
+  const modalSelectors = [
+    '#new-course-media-bank-modal',
+    '#sections-lesson-modal-portal',
+    '#new-course-cancel-overlay',
+    '#review-cancel-overlay',
+    '#course-view-overlay',
+  ]
+
+  modalSelectors.forEach((selector) => {
+    const element = document.querySelector(selector)
+    if (element) {
+      const removable = element.parentElement && element.parentElement !== document.body ? element.parentElement : element
+      removable.remove()
+    }
+  })
+
+  document.body.classList.remove('sections-modal-open')
+}
 
 function isValidMediaIdFormat(mediaId: string) {
   return MONGO_ID_REGEX.test(mediaId) || UUID_REGEX.test(mediaId)
@@ -99,11 +185,18 @@ function getMediaStreamUrl(mediaId: string) {
   return token ? `${base}?token=${token}` : base
 }
 
+function resolveMediaId(media: Pick<MediaResponse, 'id' | '_id' | 'gridFsId'>) {
+  return media.id ?? media._id ?? media.gridFsId
+}
+
 function clearCourseTabsInHeader() {
   document.querySelectorAll('.tabs-component').forEach((element) => element.remove())
 }
 
 export function renderHomePage(container: HTMLElement, role: HomeUserRole) {
+  destroyHomePage()
+  ensureHomePageAbortController()
+
   const currentView = sessionStorage.getItem(COURSE_HOME_VIEW_STORAGE_KEY)
   if (currentView === 'create') {
     renderNewCourseScreen(container, role)
@@ -498,7 +591,7 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
         document.removeEventListener('keydown', handleEsc)
       }
     }
-    document.addEventListener('keydown', handleEsc)
+    document.addEventListener('keydown', handleEsc, { signal: ensureHomePageAbortController().signal })
   }
 
   const handleEditCourse = async (courseId: string) => {
@@ -1420,44 +1513,47 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
         selectedFile = fileInput.files?.[0] ?? null
       })
 
-      const confirmButton = modalWrapper.querySelector('#new-course-media-bank-confirm') as HTMLButtonElement | null
-      confirmButton?.addEventListener('click', async () => {
-        if (mode === 'upload') {
-          const titleInputEl = modalWrapper.querySelector('#new-course-media-upload-title') as HTMLInputElement | null
-          const altInputEl = modalWrapper.querySelector('#new-course-media-upload-alt') as HTMLInputElement | null
+        const confirmButton = modalWrapper.querySelector('#new-course-media-bank-confirm') as HTMLButtonElement | null
+        confirmButton?.addEventListener('click', async () => {
+          if (mode === 'upload') {
+            const titleInputEl = modalWrapper.querySelector('#new-course-media-upload-title') as HTMLInputElement | null
+            const altInputEl = modalWrapper.querySelector('#new-course-media-upload-alt') as HTMLInputElement | null
           const descInputEl = modalWrapper.querySelector('#new-course-media-upload-description') as HTMLTextAreaElement | null
 
           const title = titleInputEl?.value.trim() ?? ''
           const altText = altInputEl?.value.trim() ?? ''
           const description = descInputEl?.value.trim() ?? ''
 
-          if (!selectedFile || !title || !altText || !description) {
-            toast(t('courses.home.mediaBank.upload.errors.requiredFields'), 'error')
-            return
-          }
+            if (!selectedFile || !title || !altText || !description) {
+              toast(t('courses.home.mediaBank.upload.errors.requiredFields'), 'error')
+              return
+            }
 
-          try {
-            const uploadedBinary = await mediaApi.uploadImage({ file: selectedFile })
-            const uploadedId = uploadedBinary.id ?? uploadedBinary._id ?? uploadedBinary.gridFsId
+            const localId = uploadManager.enqueue(
+              selectedFile,
+              'image',
+              { title, altText, description },
+              'course-cover',
+              { field: 'imageMediaId' },
+            )
 
-            if (!uploadedId) throw new Error('Missing media id')
-
-            const persisted = await mediaApi.createMediaMetadata(uploadedId, 'image', {
-              title,
-              altText,
-              description,
+            subscribeToHomePageUpload(localId, {
+              onCompleted: (job) => {
+                if (!imageInput || !job.result) return
+                imageInput.value = resolveMediaId(job.result)
+                clearFieldError(imageInput)
+                persistFormDraft()
+                toast(t('courses.home.mediaBank.upload.success'), 'success')
+              },
+              onFailed: (job) => {
+                toast(job.error ?? t('courses.home.mediaBank.upload.background.failed'), 'error')
+              },
             })
 
-            imageInput.value = persisted.id ?? persisted._id ?? persisted.gridFsId
-            clearFieldError(imageInput)
-            persistFormDraft()
             cleanup()
-            toast(t('courses.home.mediaBank.upload.success'), 'success')
-          } catch (error) {
-            toast(getMediaBankErrorMessage(error, 'upload'), 'error')
+            toast(t('courses.home.mediaBank.upload.background.started'), 'success')
+            return
           }
-          return
-        }
 
         const selected = mediaItems.find((item) => item.id === selectedMediaId)
         if (!selected) return
@@ -1469,7 +1565,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     }
 
     document.body.appendChild(modalWrapper)
-    document.addEventListener('keydown', handleEsc)
+    document.addEventListener('keydown', handleEsc, { signal: ensureHomePageAbortController().signal })
 
     void (async () => {
       try {
@@ -1580,7 +1676,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     if (!target.closest('#new-course-tags-input') && !target.closest('#new-course-tags-suggestions')) {
       if (tagsSuggestions) tagsSuggestions.hidden = true
     }
-  })
+  }, { signal: ensureHomePageAbortController().signal })
 
   ;(async () => {
     try {
@@ -2279,7 +2375,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
     document.body.classList.add('sections-modal-open')
     document.removeEventListener('keydown', handleLessonModalKeydown)
-    document.addEventListener('keydown', handleLessonModalKeydown)
+    document.addEventListener('keydown', handleLessonModalKeydown, { signal: ensureHomePageAbortController().signal })
 
     const modalTitleText = isEditMode ? t('courses.editCourse.cancelModal.title') : st('cancelCourseModal.title')
     const modalMessageText = isEditMode ? t('courses.editCourse.cancelModal.message') : st('cancelCourseModal.message')
@@ -2370,7 +2466,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
     document.body.classList.add('sections-modal-open')
     document.removeEventListener('keydown', handleLessonModalKeydown)
-    document.addEventListener('keydown', handleLessonModalKeydown)
+    document.addEventListener('keydown', handleLessonModalKeydown, { signal: ensureHomePageAbortController().signal })
 
     modalPortal.innerHTML = `
       <div class="sections-lesson-modal-overlay" id="sections-delete-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="sections-delete-modal-title">
@@ -2597,7 +2693,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
     document.body.classList.add('sections-modal-open')
     document.removeEventListener('keydown', handleLessonModalKeydown)
-    document.addEventListener('keydown', handleLessonModalKeydown)
+    document.addEventListener('keydown', handleLessonModalKeydown, { signal: ensureHomePageAbortController().signal })
 
     const activity = previewActivityModalState.activity
     const r = (path: string, params?: Record<string, string | number>) => t(`courses.sections.readModal.${path}`, params)
@@ -2701,7 +2797,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
     document.body.classList.add('sections-modal-open')
     document.removeEventListener('keydown', handleLessonModalKeydown)
-    document.addEventListener('keydown', handleLessonModalKeydown)
+    document.addEventListener('keydown', handleLessonModalKeydown, { signal: ensureHomePageAbortController().signal })
 
     const showStyledTextFields = lessonModalState.contentType === 'styledText'
     const showVideoField = lessonModalState.contentType === 'video'
@@ -2946,29 +3042,32 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
               return
             }
 
-            try {
-              const uploadedBinary = await mediaApi.uploadVideo({ file: selectedFile })
-              const uploadedId = uploadedBinary.id ?? uploadedBinary._id ?? uploadedBinary.gridFsId
+            const fileToUpload = selectedFile
+            const localId = uploadManager.enqueue(
+              fileToUpload,
+              'video',
+              { title, altText, description },
+              'lesson-video',
+              { sectionId: lessonModalState.sectionId ?? undefined },
+            )
 
-              if (!uploadedId) throw new Error('Missing media id')
+            subscribeToHomePageUpload(localId, {
+              onCompleted: (job) => {
+                if (!job.result) return
+                selectedLessonVideo = fileToUpload
+                lessonModalState.videoFileName = fileToUpload.name
+                lessonModalState.videoMediaId = resolveMediaId(job.result)
+                lessonModalState.videoError = false
+                renderLessonModal()
+                toast(t('courses.home.mediaBank.upload.success'), 'success')
+              },
+              onFailed: (job) => {
+                toast(job.error ?? t('courses.home.mediaBank.upload.background.failed'), 'error')
+              },
+            })
 
-              await mediaApi.createMediaMetadata(uploadedId, 'video', {
-                title,
-                altText,
-                description,
-              })
-
-              selectedLessonVideo = selectedFile
-              lessonModalState.videoFileName = selectedFile.name
-              lessonModalState.videoMediaId = uploadedId
-              lessonModalState.videoError = false
-              renderLessonModal()
-              cleanup()
-              toast(t('courses.home.mediaBank.upload.success'), 'success')
-            } catch (error) {
-              toast(getMediaBankErrorMessage(error, 'upload'), 'error')
-            }
-
+            cleanup()
+            toast(t('courses.home.mediaBank.upload.background.started'), 'success')
             return
           }
 
@@ -2987,7 +3086,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       }
 
       document.body.appendChild(modalWrapper)
-      document.addEventListener('keydown', handleEsc)
+      document.addEventListener('keydown', handleEsc, { signal: ensureHomePageAbortController().signal })
 
       void (async () => {
         try {
@@ -3389,7 +3488,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
     document.body.classList.add('sections-modal-open')
     document.removeEventListener('keydown', handleLessonModalKeydown)
-    document.addEventListener('keydown', handleLessonModalKeydown)
+    document.addEventListener('keydown', handleLessonModalKeydown, { signal: ensureHomePageAbortController().signal })
 
     const et = (path: string, params?: Record<string, string | number>) => t(`courses.sections.exerciseModal.${path}`, params)
     const language = getLanguage()
@@ -3596,28 +3695,31 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
               return
             }
 
-            try {
-              const uploadedBinary = await mediaApi.uploadImage({ file: selectedFile })
-              const uploadedId = uploadedBinary.id ?? uploadedBinary._id ?? uploadedBinary.gridFsId
+            const fileToUpload = selectedFile
+            const localId = uploadManager.enqueue(
+              fileToUpload,
+              'image',
+              { title, altText, description },
+              'exercise-image',
+              { sectionId: exerciseModalState.sectionId ?? undefined },
+            )
 
-              if (!uploadedId) throw new Error('Missing media id')
+            subscribeToHomePageUpload(localId, {
+              onCompleted: (job) => {
+                if (!job.result) return
+                selectedExerciseImageMediaId = resolveMediaId(job.result)
+                exerciseModalState.imageFileName = fileToUpload.name
+                exerciseModalState.imageError = false
+                renderExerciseModal()
+                toast(t('courses.home.mediaBank.upload.success'), 'success')
+              },
+              onFailed: (job) => {
+                toast(job.error ?? t('courses.home.mediaBank.upload.background.failed'), 'error')
+              },
+            })
 
-              await mediaApi.createMediaMetadata(uploadedId, 'image', {
-                title,
-                altText,
-                description,
-              })
-
-              selectedExerciseImageMediaId = uploadedId
-              exerciseModalState.imageFileName = selectedFile.name
-              exerciseModalState.imageError = false
-              renderExerciseModal()
-              cleanup()
-              toast(t('courses.home.mediaBank.upload.success'), 'success')
-            } catch (error) {
-              toast(getMediaBankErrorMessage(error, 'upload'), 'error')
-            }
-
+            cleanup()
+            toast(t('courses.home.mediaBank.upload.background.started'), 'success')
             return
           }
 
@@ -3633,7 +3735,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       }
 
       document.body.appendChild(modalWrapper)
-      document.addEventListener('keydown', handleEsc)
+      document.addEventListener('keydown', handleEsc, { signal: ensureHomePageAbortController().signal })
 
       void (async () => {
         try {
