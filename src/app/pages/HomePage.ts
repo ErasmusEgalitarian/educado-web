@@ -2821,6 +2821,8 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
       let selectedMediaId: string | null = null
       let selectedFile: File | null = selectedLessonVideo
       let mediaItems: LessonVideoMediaItem[] = []
+      let isLibraryLoading = false
+      let libraryLoadError: string | null = null
 
       const previewUrls = new Set<string>()
       const modalWrapper = document.createElement('div')
@@ -2899,6 +2901,22 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
         mediaItems = loadedItems
       }
 
+      const refreshLibrary = async () => {
+        isLibraryLoading = true
+        libraryLoadError = null
+        renderMediaModal()
+
+        try {
+          await loadLibrary()
+        } catch (error) {
+          libraryLoadError = getMediaBankErrorMessage(error, 'list')
+          toast(libraryLoadError, 'error')
+        } finally {
+          isLibraryLoading = false
+          renderMediaModal()
+        }
+      }
+
       const renderMediaModal = () => {
         const selectedMedia = mediaItems.find((item) => item.id === selectedMediaId) ?? null
 
@@ -2942,7 +2960,11 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
                   <div class="new-course-media-bank-library">
                     <div class="new-course-media-bank-grid">
                       ${
-                        mediaItems.length === 0
+                        isLibraryLoading
+                          ? `<p class="new-course-media-loading">${st('modal.libraryLoading')}</p>`
+                          : libraryLoadError
+                            ? `<p class="new-course-media-empty">${escapeHtml(libraryLoadError)}</p>`
+                            : mediaItems.length === 0
                           ? `<p class="new-course-media-empty">${t('courses.home.mediaBank.library.selectMediaHint')}</p>`
                           : mediaItems
                               .map(
@@ -2963,7 +2985,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
               <footer class="sections-lesson-modal-actions new-course-media-bank-actions">
                 <button type="button" id="new-course-media-bank-cancel" class="new-course-cancel-btn">${st('modal.cancel')}</button>
-                <button type="button" id="new-course-media-bank-confirm" class="new-course-primary-btn" ${mode === 'library' && !selectedMedia ? 'disabled' : ''}>
+                <button type="button" id="new-course-media-bank-confirm" class="new-course-primary-btn" ${mode === 'library' && (!selectedMedia || isLibraryLoading) ? 'disabled' : ''}>
                   ${mode === 'upload' ? t('courses.home.mediaBank.upload.addMedia') : st('modal.fields.videoSelect')}
                 </button>
               </footer>
@@ -2993,12 +3015,10 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
         })
         libraryTab?.addEventListener('click', async () => {
           mode = 'library'
-          try {
-            await loadLibrary()
-          } catch (error) {
-            toast(getMediaBankErrorMessage(error, 'list'), 'error')
-          }
           renderMediaModal()
+          if (mediaItems.length === 0 && !isLibraryLoading) {
+            await refreshLibrary()
+          }
         })
 
         modalWrapper.querySelectorAll<HTMLButtonElement>('.new-course-media-item').forEach((itemButton) => {
@@ -3087,15 +3107,8 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
       document.body.appendChild(modalWrapper)
       document.addEventListener('keydown', handleEsc, { signal: ensureHomePageAbortController().signal })
-
-      void (async () => {
-        try {
-          await loadLibrary()
-        } catch (error) {
-          toast(getMediaBankErrorMessage(error, 'list'), 'error')
-        }
-        renderMediaModal()
-      })()
+      renderMediaModal()
+      void refreshLibrary()
     }
 
     modalPortal.innerHTML = `

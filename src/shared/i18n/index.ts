@@ -681,6 +681,7 @@ const translations: Record<Language, TranslationTree> = {
           success: 'Aula adicionada com sucesso.',
           updateSuccess: 'Aula atualizada com sucesso.',
           videoTooLong: 'O vídeo deve ter no máximo 3 minutos.',
+          libraryLoading: 'Carregando vídeos...',
           characters: 'caracteres',
           fields: {
             name: 'Nome',
@@ -2176,6 +2177,7 @@ const translations: Record<Language, TranslationTree> = {
           success: 'Lesson added successfully.',
           updateSuccess: 'Lesson updated successfully.',
           videoTooLong: 'The video must be up to 3 minutes.',
+          libraryLoading: 'Loading videos...',
           characters: 'characters',
           fields: {
             name: 'Name',
