@@ -1,6 +1,6 @@
 {
   "name": "educado-web",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Educado course management web interface",
   "scripts": {
     "dev": "vite",
