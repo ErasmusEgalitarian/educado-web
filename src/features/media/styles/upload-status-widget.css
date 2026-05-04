@@ -1,0 +1,123 @@
+.upload-status-widget {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1400;
+  width: min(360px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.upload-status-widget:empty {
+  display: none;
+}
+
+.upload-status-card {
+  pointer-events: auto;
+  border: 1px solid #d6e0e5;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 20px 40px rgba(40, 54, 62, 0.14);
+  padding: 16px;
+}
+
+.upload-status-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.upload-status-card-title {
+  margin: 0;
+  color: #28363e;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.upload-status-card-subtitle {
+  margin: 6px 0 0;
+  color: #5f7986;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.upload-status-dismiss-btn,
+.upload-status-action-btn {
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.upload-status-dismiss-btn {
+  min-width: 28px;
+  min-height: 28px;
+  background: #eef3f6;
+  color: #4e6879;
+}
+
+.upload-status-progress {
+  height: 8px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6edf1;
+}
+
+.upload-status-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #246670 0%, #4f9da9 100%);
+  transition: width 180ms ease;
+}
+
+.upload-status-card.is-failed .upload-status-progress-bar {
+  background: linear-gradient(90deg, #ba2c24 0%, #e15c55 100%);
+}
+
+.upload-status-card.is-completed .upload-status-progress-bar {
+  background: linear-gradient(90deg, #4b7f13 0%, #6cb229 100%);
+}
+
+.upload-status-card.is-aborted .upload-status-progress-bar {
+  background: linear-gradient(90deg, #8b9ba6 0%, #aebbc4 100%);
+}
+
+.upload-status-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.upload-status-meta {
+  color: #809cad;
+  font-size: 12px;
+}
+
+.upload-status-action-btn {
+  padding: 8px 14px;
+  background: #28363e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.upload-status-action-btn.is-secondary {
+  background: #eef3f6;
+  color: #28363e;
+}
+
+@media (max-width: 640px) {
+  .upload-status-widget {
+    right: 16px;
+    bottom: 16px;
+    width: calc(100vw - 24px);
+  }
+}

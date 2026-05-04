@@ -5,6 +5,7 @@ import {
   type InstitutionUpdatePayload,
 } from '@/features/admin/api/institutions.api'
 import { routes } from '@/app/routes'
+import { navigate } from '@/app/router'
 import { ApiError } from '@/shared/api/http'
 import { t } from '@/shared/i18n'
 import { toast } from '@/shared/ui/toast'
@@ -261,7 +262,7 @@ export function renderAdminInstitutionsPage(container: HTMLElement) {
 
     const usersTab = container.querySelector('[data-nav="users"]') as HTMLButtonElement | null
     usersTab?.addEventListener('click', () => {
-      window.location.assign(routes.adminUsers)
+      navigate(routes.adminUsers)
     })
 
     const sortSelect = container.querySelector('#admin-institutions-sort') as HTMLSelectElement | null

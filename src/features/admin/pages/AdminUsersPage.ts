@@ -2,6 +2,7 @@ import { adminUsersApi, type AdminUserDetails, type AdminUserListItem, type Admi
 import { getCurrentUser } from '@/shared/api/auth-session'
 import { ApiError } from '@/shared/api/http'
 import { routes } from '@/app/routes'
+import { navigate } from '@/app/router'
 import { t } from '@/shared/i18n'
 import { toast } from '@/shared/ui/toast'
 import '@/features/admin/styles/admin-users.css'
@@ -328,7 +329,7 @@ export function renderAdminUsersPage(container: HTMLElement) {
 
     const institutionsTab = container.querySelector('[data-nav="institutions"]') as HTMLButtonElement | null
     institutionsTab?.addEventListener('click', () => {
-      window.location.assign(routes.adminInstitutions)
+      navigate(routes.adminInstitutions)
     })
   }
 
@@ -488,7 +489,7 @@ export function renderAdminUsersPage(container: HTMLElement) {
         const userId = button.dataset.userId
         if (!userId) return
         const url = `${routes.adminUserReview}?userId=${encodeURIComponent(userId)}`
-        window.location.assign(url)
+        navigate(url)
       })
     })
 
