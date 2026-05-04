@@ -2485,6 +2485,24 @@ body.sections-modal-open {
     overflow: auto;
 }
 
+.new-course-media-loading,
+.new-course-media-empty {
+    margin: 0;
+    padding: 24px 16px;
+    border: 1px dashed #c1cfd7;
+    border-radius: 12px;
+    background: #f7fbfc;
+    color: #4e6879;
+    text-align: center;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.new-course-media-loading {
+    color: #246670;
+    font-weight: 600;
+}
+
 .new-course-media-item {
     border: 1px solid #c1cfd7;
     border-radius: 10px;
