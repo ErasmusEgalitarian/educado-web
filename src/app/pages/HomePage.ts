@@ -1386,9 +1386,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
       const loadedItems = await Promise.all(
         response.items.map(async (item: MediaResponse) => {
           const id = item.id ?? item._id ?? item.gridFsId
-          const blob = await mediaApi.streamMedia(id)
-          const objectUrl = URL.createObjectURL(blob)
-          previewUrls.add(objectUrl)
+          const objectUrl = mediaApi.getMediaStreamUrl(id)
 
           return {
             id,
@@ -3527,7 +3525,6 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
         title: string
         altText: string
         description: string
-        blob: Blob
         previewUrl: string
       }
 
@@ -3564,16 +3561,13 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
         const loadedItems = await Promise.all(
           response.items.map(async (item: MediaResponse) => {
             const id = item.id ?? item._id ?? item.gridFsId
-            const blob = await mediaApi.streamMedia(id)
-            const previewUrl = URL.createObjectURL(blob)
-            previewUrls.add(previewUrl)
+            const previewUrl = mediaApi.getMediaStreamUrl(id)
 
             return {
               id,
               title: item.title || item.filename,
               altText: item.altText || '',
               description: item.description || '',
-              blob,
               previewUrl,
             }
           }),

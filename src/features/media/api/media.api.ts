@@ -237,18 +237,24 @@ export const mediaApi = {
     return mediaApi.updateImageMetadata(id, payload)
   },
 
-  streamMedia: async (id: string) => {
+  getMediaStreamUrl: (id: string): string => {
     const token = getAccessToken()
+    const base = import.meta.env.VITE_API_URL ?? 'http://localhost:5001'
+    return token
+      ? `${base}/media/${id}/stream?token=${encodeURIComponent(token)}`
+      : `${base}/media/${id}/stream`
+  },
 
-    const response = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:5001'}/media/${id}/stream`, {
+  streamMedia: async (id: string): Promise<Blob> => {
+    const token = getAccessToken()
+    const base = import.meta.env.VITE_API_URL ?? 'http://localhost:5001'
+    const response = await fetch(`${base}/media/${id}/stream`, {
       method: 'GET',
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     })
-
     if (!response.ok) {
       throw new Error(`Could not stream media. Status: ${response.status}`)
     }
-
     return response.blob()
   },
 
