@@ -1062,8 +1062,7 @@ export class MediaBankPage {
     await Promise.all(
       items.map(async (item) => {
         try {
-          const blob = await mediaApi.streamMedia(item.id)
-          const objectUrl = URL.createObjectURL(blob)
+          const objectUrl = mediaApi.getMediaStreamUrl(item.id)
           this.mediaPreviewUrls.set(item.id, objectUrl)
           item.url = objectUrl
         } catch {

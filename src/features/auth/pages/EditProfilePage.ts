@@ -565,9 +565,7 @@ export async function renderEditProfilePage(root: HTMLElement, options?: EditPro
     avatarLibraryItems = await Promise.all(
       response.items.map(async (item) => {
         const id = item.id ?? item._id ?? item.gridFsId
-        const blob = await mediaApi.streamMedia(id)
-        const objectUrl = URL.createObjectURL(blob)
-        avatarPreviewUrls.add(objectUrl)
+        const objectUrl = mediaApi.getMediaStreamUrl(id)
         return { id, title: item.title || item.filename, thumbnailUrl: objectUrl }
       })
     )
