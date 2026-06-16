@@ -249,6 +249,7 @@ class UploadManager {
     job.status = 'uploading'
     this.emitState()
 
+    const PART_CONCURRENCY = 3
     let init: InitChunkedResponse | null = null
     const parts: UploadPartResponse[] = []
 
@@ -258,19 +259,29 @@ class UploadManager {
       job.totalParts = init.totalParts
       this.emitState()
 
-      for (let partNumber = 1; partNumber <= init.totalParts; partNumber++) {
+      const partNumbers = Array.from({ length: init.totalParts }, (_, i) => i + 1)
+
+      for (let i = 0; i < partNumbers.length; i += PART_CONCURRENCY) {
         if (controller.signal.aborted) {
           throw new DOMException('Aborted', 'AbortError')
         }
 
-        const start = (partNumber - 1) * init.chunkSize
-        const end = Math.min(start + init.chunkSize, file.size)
-        const chunk = file.slice(start, end)
+        const batch = partNumbers.slice(i, i + PART_CONCURRENCY)
+        const batchResults = await Promise.all(
+          batch.map(async (partNumber) => {
+            const start = (partNumber - 1) * init!.chunkSize
+            const end = Math.min(start + init!.chunkSize, file.size)
+            const chunk = file.slice(start, end)
+            const part = await mediaApi.uploadVideoPart(init!.id, partNumber, chunk, file.name, { signal: controller.signal })
+            return { part, chunkSize: chunk.size }
+          })
+        )
 
-        const part = await mediaApi.uploadVideoPart(init.id, partNumber, chunk, file.name, { signal: controller.signal })
-        parts.push(part)
+        for (const { part, chunkSize } of batchResults) {
+          parts.push(part)
+          job.uploadedBytes += chunkSize
+        }
         job.completedParts = parts.length
-        job.uploadedBytes += chunk.size
         this.emitState()
       }
 
