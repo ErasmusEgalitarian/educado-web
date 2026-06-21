@@ -480,6 +480,7 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
         case 'text_reading': return '\uD83D\uDCC4'
         case 'multiple_choice': return '\u270E'
         case 'true_false': return '\u2713\u2717'
+        case 'image_association': return '\uD83D\uDD17'
         default: return '\u2022'
       }
     }
@@ -490,6 +491,7 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
         case 'text_reading': return 'Leitura'
         case 'multiple_choice': return 'M\u00FAltipla Escolha'
         case 'true_false': return 'Verdadeiro/Falso'
+        case 'image_association': return 'Associa\u00E7\u00E3o'
         default: return type
       }
     }
@@ -1868,7 +1870,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     mediaPreview?: { kind: 'video' | 'image'; src: string; poster?: string } | null
   }
   type LessonContentType = '' | 'video' | 'styledText'
-  type ExerciseContentType = '' | 'multipleChoice' | 'trueFalse'
+  type ExerciseContentType = '' | 'multipleChoice' | 'trueFalse' | 'imageAssociation'
 
   let sections: SectionDraft[] = []
   let lessonModalState: {
@@ -2035,7 +2037,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
   const countSectionActivities = (activities: ActivityDraft[]) => {
     const lessons = activities.filter((item) => item.type === 'video_pause' || item.type === 'text_reading').length
-    const exercises = activities.filter((item) => item.type === 'multiple_choice' || item.type === 'true_false').length
+    const exercises = activities.filter((item) => item.type === 'multiple_choice' || item.type === 'true_false' || item.type === 'image_association').length
     return { lessons, exercises }
   }
 
@@ -2630,8 +2632,9 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
         return
       }
 
-      if (activity.type === 'multiple_choice' || activity.type === 'true_false') {
+      if (activity.type === 'multiple_choice' || activity.type === 'true_false' || activity.type === 'image_association') {
         const isTrueFalse = activity.type === 'true_false'
+        const isImageAssociation = activity.type === 'image_association'
         const language = getLanguage()
         const trueLabel = language === 'en-US' ? 'True' : 'Verdadeiro'
         const falseLabel = language === 'en-US' ? 'False' : 'Falso'
@@ -2642,11 +2645,11 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
           editingActivityId: activity.id,
           sectionIndex,
           title: activity.title ?? '',
-          contentType: isTrueFalse ? 'trueFalse' : 'multipleChoice',
+          contentType: isTrueFalse ? 'trueFalse' : isImageAssociation ? 'imageAssociation' : 'multipleChoice',
           question: activityQuestion,
           alternatives: isTrueFalse ? [trueLabel, falseLabel] : (activityOptions.length >= 2 ? activityOptions : ['', '']),
           correctAlternativeIndex: numericCorrectAnswer,
-          includeImage: Boolean(activity.imageMediaId),
+          includeImage: isImageAssociation ? true : Boolean(activity.imageMediaId),
           imageFileName: activity.imageMediaId ? t('courses.home.mediaBank.library.selectMediaHint') : '',
           titleError: false,
           contentTypeError: false,
@@ -2708,7 +2711,9 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
         ? st('modal.contentTypes.styledText')
         : activity.type === 'true_false'
           ? t('courses.sections.exerciseModal.contentTypes.trueFalse')
-          : t('courses.sections.exerciseModal.contentTypes.multipleChoice')
+          : activity.type === 'image_association'
+            ? t('courses.sections.exerciseModal.contentTypes.imageAssociation')
+            : t('courses.sections.exerciseModal.contentTypes.multipleChoice')
 
     const optionsMarkup = activityOptions
       .map((option, index) => `
@@ -3511,10 +3516,11 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     const falseOptionLabel = falseOptionRaw.startsWith('courses.sections.exerciseModal.')
       ? (language === 'en-US' ? 'False' : 'Falso')
       : falseOptionRaw
-    const isMultipleChoice = exerciseModalState.contentType === 'multipleChoice'
+    const isImageAssociation = exerciseModalState.contentType === 'imageAssociation'
+    const isMultipleChoice = exerciseModalState.contentType === 'multipleChoice' || isImageAssociation
     const isTrueFalse = exerciseModalState.contentType === 'trueFalse'
     const hasQuestionBlock = isMultipleChoice || isTrueFalse
-    const showExerciseImageField = hasQuestionBlock && exerciseModalState.includeImage
+    const showExerciseImageField = isImageAssociation || (hasQuestionBlock && exerciseModalState.includeImage)
     const questionCounter = `${exerciseModalState.question.length}/70 ${st('modal.characters')}`
     const canAddAlternative = exerciseModalState.alternatives.length < 4
     const canRemoveAlternative = exerciseModalState.alternatives.length > 2
@@ -3779,6 +3785,10 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
                   <input type="radio" name="exercise-content-type" value="trueFalse" ${exerciseModalState.contentType === 'trueFalse' ? 'checked' : ''}>
                   <span>${et('contentTypes.trueFalse')}</span>
                 </label>
+                <label class="sections-lesson-modal-radio">
+                  <input type="radio" name="exercise-content-type" value="imageAssociation" ${exerciseModalState.contentType === 'imageAssociation' ? 'checked' : ''}>
+                  <span>${et('contentTypes.imageAssociation')}</span>
+                </label>
               </div>
             </div>
 
@@ -3846,6 +3856,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
                 ${exerciseModalState.correctAlternativeError ? `<div class="sections-lesson-modal-correct-error">${et('fields.correctAlternativeRequired')}</div>` : ''}
 
+                ${isImageAssociation ? '' : `
                 <div class="sections-lesson-modal-question-toggle-wrap">
                   <label class="sections-modal-switch" for="exercise-include-image-toggle">
                     <input type="checkbox" id="exercise-include-image-toggle" ${exerciseModalState.includeImage ? 'checked' : ''}>
@@ -3853,6 +3864,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
                     <span class="sections-modal-switch-label">${et('fields.includeImage')}</span>
                   </label>
                 </div>
+                `}
 
                 ${showExerciseImageField ? `
                   <div class="sections-lesson-modal-video ${exerciseModalState.imageError ? 'is-invalid' : ''}">
@@ -3934,7 +3946,18 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
           exerciseModalState.correctAlternativeIndex = 0
         }
 
-        if (exerciseModalState.contentType !== 'multipleChoice' && exerciseModalState.contentType !== 'trueFalse') {
+        if (exerciseModalState.contentType === 'imageAssociation') {
+          // Associação: alternativas editáveis (como múltipla escolha) e imagem obrigatória.
+          exerciseModalState.alternatives = ['', '']
+          exerciseModalState.correctAlternativeIndex = 0
+          exerciseModalState.includeImage = true
+        }
+
+        if (
+          exerciseModalState.contentType !== 'multipleChoice'
+          && exerciseModalState.contentType !== 'trueFalse'
+          && exerciseModalState.contentType !== 'imageAssociation'
+        ) {
           exerciseModalState.question = ''
           exerciseModalState.alternatives = ['', '']
           exerciseModalState.correctAlternativeIndex = 0
@@ -4016,12 +4039,12 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
     submitButton?.addEventListener('click', async () => {
       const isTitleValid = exerciseModalState.title.trim().length > 0
       const isTypeValid = exerciseModalState.contentType.length > 0
-      const requiresChoiceQuestion = exerciseModalState.contentType === 'multipleChoice' || exerciseModalState.contentType === 'trueFalse'
-      const requiresEditableAlternatives = exerciseModalState.contentType === 'multipleChoice'
+      const isImageAssociation = exerciseModalState.contentType === 'imageAssociation'
+      const requiresChoiceQuestion = exerciseModalState.contentType === 'multipleChoice' || exerciseModalState.contentType === 'trueFalse' || isImageAssociation
+      const requiresEditableAlternatives = exerciseModalState.contentType === 'multipleChoice' || isImageAssociation
       const isQuestionValid = !requiresChoiceQuestion || exerciseModalState.question.trim().length > 0
       const areAlternativesValid = !requiresEditableAlternatives || exerciseModalState.alternatives.every((alternative) => alternative.trim().length > 0)
-      const isExerciseImageValid = !requiresChoiceQuestion
-        || !exerciseModalState.includeImage
+      const isExerciseImageValid = (!requiresChoiceQuestion || (!exerciseModalState.includeImage && !isImageAssociation))
         || (Boolean(selectedExerciseImageMediaId) && isValidMediaIdFormat(selectedExerciseImageMediaId ?? ''))
       const isCorrectAlternativeValid = !requiresChoiceQuestion
         || (
@@ -4057,6 +4080,11 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
 
       try {
         const isTrueFalse = exerciseModalState.contentType === 'trueFalse'
+        const activityType: ActivityType = isTrueFalse
+          ? 'true_false'
+          : isImageAssociation
+            ? 'image_association'
+            : 'multiple_choice'
         const options = isTrueFalse
           ? [trueOptionLabel, falseOptionLabel]
           : exerciseModalState.alternatives.map((alternative) => alternative.trim())
@@ -4068,7 +4096,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
         if (exerciseModalState.editingActivityId) {
           const updated = await activitiesApi.updateActivity(exerciseModalState.editingActivityId, {
             title: exerciseModalState.title.trim(),
-            type: isTrueFalse ? 'true_false' : 'multiple_choice',
+            type: activityType,
             order: nextOrder,
             question: exerciseModalState.question.trim(),
             options,
@@ -4087,7 +4115,7 @@ function renderCourseSectionsScreen(container: HTMLElement, role: HomeUserRole, 
             id: crypto.randomUUID(),
             sectionId: section.id,
             title: exerciseModalState.title.trim(),
-            type: isTrueFalse ? 'true_false' : 'multiple_choice',
+            type: activityType,
             order: section.activities.length,
             question: exerciseModalState.question.trim(),
             options,
@@ -4768,7 +4796,7 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
         sectionRows.map(async (section) => {
           const activities = await activitiesApi.getActivitiesBySection(section.id)
           const lessons = activities.filter((item) => item.type === 'video_pause' || item.type === 'text_reading').length
-          const exercises = activities.filter((item) => item.type === 'multiple_choice' || item.type === 'true_false').length
+          const exercises = activities.filter((item) => item.type === 'multiple_choice' || item.type === 'true_false' || item.type === 'image_association').length
           const firstImageActivity = activities.find((item) => typeof item.imageMediaId === 'string' && item.imageMediaId.trim().length > 0)
 
           const mediaPreview = section.videoMediaId
@@ -4863,6 +4891,7 @@ function renderCourseReviewScreen(container: HTMLElement, role: HomeUserRole, dr
                     : activity.type === 'text_reading' ? 'Leitura'
                     : activity.type === 'multiple_choice' ? 'Múltipla Escolha'
                     : activity.type === 'true_false' ? 'Verdadeiro/Falso'
+                    : activity.type === 'image_association' ? 'Associação'
                     : activity.type
                   const typeClass = activity.type === 'video_pause' ? 'is-video'
                     : activity.type === 'text_reading' ? 'is-text'

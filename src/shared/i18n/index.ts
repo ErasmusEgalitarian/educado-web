@@ -743,6 +743,7 @@ const translations: Record<Language, TranslationTree> = {
           contentTypes: {
             multipleChoice: 'Múltipla Escolha',
             trueFalse: 'Verdadeiro ou Falso',
+            imageAssociation: 'Associação',
           },
           errors: {
             mediaValidation: 'A imagem selecionada é inválida para este exercício.',
@@ -2239,6 +2240,7 @@ const translations: Record<Language, TranslationTree> = {
           contentTypes: {
             multipleChoice: 'Multiple Choice',
             trueFalse: 'True or False',
+            imageAssociation: 'Association',
           },
           errors: {
             mediaValidation: 'The selected image is invalid for this exercise.',
