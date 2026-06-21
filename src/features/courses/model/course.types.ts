@@ -1,6 +1,6 @@
 export type CourseDifficulty = 'beginner' | 'intermediate' | 'advanced'
 export type CourseStatusFilter = 'active' | 'inactive' | 'all'
-export type ActivityType = 'video_pause' | 'true_false' | 'text_reading' | 'multiple_choice'
+export type ActivityType = 'video_pause' | 'true_false' | 'text_reading' | 'multiple_choice' | 'image_association'
 
 export interface Tag {
   id: string
