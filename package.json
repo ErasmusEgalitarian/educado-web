@@ -2,6 +2,7 @@
   "name": "educado-web",
   "version": "1.0.1",
   "description": "Educado course management web interface",
+  "license": "Apache-2.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
