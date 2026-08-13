@@ -37,7 +37,7 @@ For any UI change, include before and after. Include the mobile viewport if `/st
 - [ ] Every new user-facing string goes through `t()` and exists in both `pt-BR` and `en-US` in `src/shared/i18n/index.ts`. No hardcoded UI text.
 - [ ] Navigation uses `navigate` / `replace` from `src/app/router.ts` and the paths in `src/app/routes/index.ts`.
 - [ ] HTTP calls go through the `api` wrapper in `src/shared/api/http.ts`.
-- [ ] User-supplied text interpolated into HTML is passed through `escapeHtml` (media URLs are not escaped).
+- [ ] User-supplied text interpolated into HTML is escaped using the module's own local `escapeHtml` (there is no shared helper to import; media URLs are not escaped).
 - [ ] No UI framework, state library or routing library was introduced.
 - [ ] I tested with both the `USER` and `ADMIN` roles, if the change touches navigation or permissions.
 - [ ] No secrets, tokens or `.env` files are included in this pull request.

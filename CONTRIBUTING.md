@@ -95,7 +95,7 @@ Rules:
 - **Rendering.** Pages export `render*(container: HTMLElement, ...)` functions (or a class with `init()` and `destroy()`) that write `innerHTML` and bind listeners afterwards. State changes trigger a full re-render. If a page allocates listeners or timers, expose a teardown.
 - **Routing.** Use `navigate` and `replace` from `src/app/router.ts` together with the paths defined in `src/app/routes/index.ts`. Avoid `window.location.assign` in new code.
 - **HTTP.** Use the `api` wrapper in `src/shared/api/http.ts`. Do not call `fetch` or axios directly from feature code.
-- **Escaping.** Run user-supplied text through `escapeHtml` before interpolating it into a template string. Do not escape media URLs, since that breaks the `?token=` query.
+- **Escaping.** Escape user-supplied text before interpolating it into a template string. There is no shared escaping helper today: each module that needs one declares its own local `escapeHtml` (see `src/features/dashboard/pages/DashboardPage.ts` or `src/features/auth/components/PasswordResetFlow.ts` for the shape). Use the local one in the module you are editing, or add one to that module, and do not import from another feature. Do not escape media URLs, since that breaks the `?token=` query.
 - **Imports.** The `@/` alias points to `src/`. It is configured in both `vite.config.ts` and `tsconfig.json`.
 - **Styles.** Plain CSS, one file per feature under `src/features/<name>/styles/`, globals in `src/app/styles/globals.css`. Check the existing feature stylesheets before inventing a color or a radius.
 

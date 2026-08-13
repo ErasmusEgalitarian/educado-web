@@ -121,7 +121,7 @@ src/
   shared/
     api/http.ts               # wrapper de fetch (api.get/post/put/patch/del + ApiError)
     api/auth-session.ts       # token e usuário corrente no localStorage
-    i18n/index.ts             # traduções pt-BR e en-US, t()/setLanguage/subscribe
+    i18n/index.ts             # traduções pt-BR e en-US, t()/setLanguage/subscribeLanguage
     ui/                       # toast, loader global, seletor de idioma
     types/index.ts
 public/                       # imagens e ícones servidos como estáticos
