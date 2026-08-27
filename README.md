@@ -56,7 +56,13 @@ Só existe uma variável, e ela é lida via `import.meta.env.VITE_API_URL`:
 | --- | --- | --- | --- |
 | `VITE_API_URL` | URL base da educado-api | `http://localhost:5001` | `https://api-educado.tominho.com` |
 
-Crie um `.env` na raiz para desenvolvimento:
+Copie o exemplo versionado e ajuste se precisar:
+
+```bash
+cp .env.example .env
+```
+
+O conteudo para desenvolvimento local e:
 
 ```bash
 VITE_API_URL=http://localhost:5001
