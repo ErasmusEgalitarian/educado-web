@@ -14,7 +14,13 @@ cd educado-web
 npm ci
 ```
 
-Create a `.env` file at the repository root:
+Copy the versioned template to create your `.env` at the repository root:
+
+```bash
+cp .env.example .env
+```
+
+Its contents for local development:
 
 ```bash
 VITE_API_URL=http://localhost:5001
