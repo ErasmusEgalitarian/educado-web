@@ -21,6 +21,7 @@ import type {
 import { tagsApi } from '@/features/courses/api/tags.api'
 import { mediaApi, type MediaResponse } from '@/features/media/api/media.api'
 import { isValidMediaIdFormat } from '@/features/media/model/media-id'
+import { classifyMediaReferenceError, type MediaReferenceErrorCode } from '@/features/media/model/media-reference-error'
 import { uploadManager, type UploadJob } from '@/features/media/services/upload-manager'
 import { ApiError } from '@/shared/api/http'
 import { toast } from '@/shared/ui/toast'
@@ -122,33 +123,22 @@ export function destroyHomePage() {
   document.body.classList.remove('sections-modal-open')
 }
 
-function getMediaReferenceErrorMessage(error: unknown, context: MediaErrorContext) {
-  if (!(error instanceof ApiError)) return null
+const mediaReferenceErrorPaths: Record<MediaReferenceErrorCode, string> = {
+  VALIDATION_ERROR: 'mediaValidation',
+  INVALID_MEDIA_ID: 'mediaInvalidId',
+  MEDIA_NOT_FOUND: 'mediaNotFound',
+  MEDIA_INACTIVE: 'mediaInactive',
+  FORBIDDEN: 'mediaForbidden',
+}
 
+function getMediaReferenceErrorCodeMessage(code: MediaReferenceErrorCode, context: MediaErrorContext) {
   const keyPrefix = context === 'course' ? 'courses.newCourse.errors' : 'courses.sections.exerciseModal.errors'
-  const code = error.code ?? ''
+  return t(`${keyPrefix}.${mediaReferenceErrorPaths[code]}`)
+}
 
-  if (code === 'VALIDATION_ERROR') {
-    return t(`${keyPrefix}.mediaValidation`)
-  }
-
-  if (code === 'INVALID_MEDIA_ID') {
-    return t(`${keyPrefix}.mediaInvalidId`)
-  }
-
-  if (code === 'MEDIA_NOT_FOUND') {
-    return t(`${keyPrefix}.mediaNotFound`)
-  }
-
-  if (code === 'MEDIA_INACTIVE') {
-    return t(`${keyPrefix}.mediaInactive`)
-  }
-
-  if (code === 'FORBIDDEN') {
-    return t(`${keyPrefix}.mediaForbidden`)
-  }
-
-  return null
+function getMediaReferenceErrorMessage(error: unknown, context: MediaErrorContext) {
+  const code = classifyMediaReferenceError(error)
+  return code ? getMediaReferenceErrorCodeMessage(code, context) : null
 }
 
 function getMediaBankErrorMessage(error: unknown, operation: 'upload' | 'list') {
