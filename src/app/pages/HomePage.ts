@@ -4,7 +4,6 @@ import { sectionsApi } from '@/features/courses/api/sections.api'
 import { activitiesApi } from '@/features/courses/api/activities.api'
 import type { Activity, ActivityType, Course, Section, Tag } from '@/features/courses/model/course.types'
 import {
-  buildCreateCoursePayload,
   NEW_COURSE_DESCRIPTION_MAX_LENGTH,
   NEW_COURSE_DESCRIPTION_MIN_LENGTH,
   NEW_COURSE_TITLE_MIN_LENGTH,
@@ -16,8 +15,10 @@ import type {
   NewCourseFormDraft,
   NewCourseFormInput,
   NewCourseSubmitMode,
+  NewCourseSubmitStorage,
   NewCourseValidationErrorCode,
 } from '@/features/courses/new-course/newCourse.types'
+import { submitNewCourse } from '@/features/courses/new-course/submitNewCourse'
 import { tagsApi } from '@/features/courses/api/tags.api'
 import { mediaApi, type MediaResponse } from '@/features/media/api/media.api'
 import { isValidMediaIdFormat } from '@/features/media/model/media-id'
@@ -1181,7 +1182,16 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     persistFormDraft()
   }
 
-  const submitNewCourse = async (mode: NewCourseSubmitMode) => {
+  const submitStorage: NewCourseSubmitStorage = {
+    saveCourse: (course) => {
+      sessionStorage.setItem(COURSE_HOME_DRAFT_STORAGE_KEY, JSON.stringify(course))
+      persistFormDraft()
+    },
+    clearLocalDrafts: clearCreationLocalDrafts,
+    clearEditCourse: () => sessionStorage.removeItem('educado.editCourseId'),
+  }
+
+  const handleNewCourseSubmit = async (mode: NewCourseSubmitMode) => {
     const formData = normalizeNewCourseForm({
       title: titleInput?.value ?? '',
       description: descriptionInput?.value ?? '',
@@ -1212,90 +1222,47 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
       return
     }
 
-    if (isEditMode && editCourse) {
-      try {
-        const editPayload = buildCreateCoursePayload(formData, {
-          estimatedTime: editCourse.estimatedTime || '8 horas',
-          passingThreshold: editCourse.passingThreshold ?? 70,
-          rating: editCourse.rating ?? null,
-        })
-        const updatedCourse = await coursesApi.updateCourse(editCourse.id, editPayload)
-        sessionStorage.setItem(COURSE_HOME_DRAFT_STORAGE_KEY, JSON.stringify(updatedCourse))
-        persistFormDraft()
+    const result = await submitNewCourse(
+      {
+        mode,
+        form: formData,
+        draftCourseId: draftCourse?.id,
+        editCourse,
+      },
+      { api: coursesApi, storage: submitStorage },
+    )
+
+    if (result.status === 'draftSaved') {
+      if (result.flow === 'edit') {
         toast(t('courses.home.feedback.updateSuccess'), 'success')
-
-        if (mode === 'draft') {
-          await coursesApi.deactivateCourse(updatedCourse.id)
-          clearCreationLocalDrafts()
-          sessionStorage.removeItem('educado.editCourseId')
-          toast(t('courses.home.feedback.deactivateSuccess'), 'success')
-          goBackToDashboard()
-          return
-        }
-
-        if (mode === 'next') {
-          sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'sections')
-          renderCourseSectionsScreen(container, role, updatedCourse)
-          return
-        }
-
-        if (mode === 'review') {
-          sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'review')
-          renderCourseReviewScreen(container, role, updatedCourse)
-          return
-        }
-      } catch (error) {
-        const mediaErrorMessage = getMediaReferenceErrorMessage(error, 'course')
-        if (mediaErrorMessage) {
-          setFieldError(imageInput, mediaErrorMessage)
-          toast(mediaErrorMessage, 'error')
-          return
-        }
-        toast(t('courses.home.feedback.updateError'), 'error')
       }
+      toast(t('courses.home.feedback.deactivateSuccess'), 'success')
+      goBackToDashboard()
       return
     }
 
-    try {
-      const payload = buildCreateCoursePayload(formData)
+    if (result.status === 'navigateToSections' || result.status === 'navigateToReview') {
+      toast(result.operation === 'update' ? t('courses.home.feedback.updateSuccess') : t('courses.home.feedback.createSuccess'), 'success')
 
-      const upsertedCourse = draftCourse?.id
-        ? await coursesApi.updateCourse(draftCourse.id, payload)
-        : await coursesApi.createCourse(payload)
-
-      sessionStorage.setItem(COURSE_HOME_DRAFT_STORAGE_KEY, JSON.stringify(upsertedCourse))
-      persistFormDraft()
-
-      if (mode === 'draft') {
-        await coursesApi.deactivateCourse(upsertedCourse.id)
-        clearCreationLocalDrafts()
-        toast(t('courses.home.feedback.deactivateSuccess'), 'success')
-        goBackToDashboard()
-        return
-      }
-
-      toast(draftCourse?.id ? t('courses.home.feedback.updateSuccess') : t('courses.home.feedback.createSuccess'), 'success')
-
-      if (mode === 'next') {
+      if (result.status === 'navigateToSections') {
         sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'sections')
-        renderCourseSectionsScreen(container, role, upsertedCourse)
+        renderCourseSectionsScreen(container, role, result.course)
         return
       }
 
-      if (mode === 'review') {
-        sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'review')
-        renderCourseReviewScreen(container, role, upsertedCourse)
-        return
-      }
-    } catch (error) {
-      const mediaErrorMessage = getMediaReferenceErrorMessage(error, 'course')
-      if (mediaErrorMessage) {
-        setFieldError(imageInput, mediaErrorMessage)
-        toast(mediaErrorMessage, 'error')
-        return
-      }
-      toast(t('courses.home.feedback.createError'), 'error')
+      sessionStorage.setItem(COURSE_HOME_VIEW_STORAGE_KEY, 'review')
+      renderCourseReviewScreen(container, role, result.course)
+      return
     }
+
+    if (result.status === 'mediaReferenceError') {
+      const mediaErrorMessage = getMediaReferenceErrorCodeMessage(result.code, 'course')
+      setFieldError(imageInput, mediaErrorMessage)
+      toast(mediaErrorMessage, 'error')
+      return
+    }
+
+    toast(result.flow === 'edit' ? t('courses.home.feedback.updateError') : t('courses.home.feedback.createError'), 'error')
   }
 
   if (titleInput) titleInput.value = formDraft?.title ?? draftCourse?.title ?? editCourse?.title ?? ''
@@ -1680,13 +1647,13 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     renderCancelCourseModal()
   })
   draftButton?.addEventListener('click', async () => {
-    await submitNewCourse('draft')
+    await handleNewCourseSubmit('draft')
   })
   draftButtonMobile?.addEventListener('click', async () => {
-    await submitNewCourse('draft')
+    await handleNewCourseSubmit('draft')
   })
   nextButton?.addEventListener('click', async () => {
-    await submitNewCourse('next')
+    await handleNewCourseSubmit('next')
   })
 
   if (isEditMode && editCourse) {
@@ -1728,12 +1695,12 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
       if (target === 'create') return
 
       if (target === 'sections') {
-        void submitNewCourse('next')
+        void handleNewCourseSubmit('next')
         return
       }
 
       if (target === 'review') {
-        void submitNewCourse('review')
+        void handleNewCourseSubmit('review')
       }
     })
   })
