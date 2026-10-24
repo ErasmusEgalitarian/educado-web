@@ -1,4 +1,10 @@
-import type { CourseDifficulty, CreateCourseInput } from '@/features/courses/model/course.types'
+import type {
+  Course,
+  CourseDifficulty,
+  CreateCourseInput,
+  UpdateCourseInput,
+} from '@/features/courses/model/course.types'
+import type { MediaReferenceErrorCode } from '@/features/media/model/media-reference-error'
 
 export type NewCourseSubmitMode = 'draft' | 'next' | 'review'
 
@@ -49,3 +55,45 @@ export type NewCourseFormDraft = Omit<NewCourseFormInput, 'tagIds'> & {
 export type BuildCoursePayloadOptions = Partial<
   Pick<CreateCourseInput, 'estimatedTime' | 'passingThreshold' | 'rating'>
 >
+
+export type NewCourseSubmitFlow = 'create' | 'edit'
+
+export type NewCourseSubmitOperation = 'create' | 'update'
+
+export interface NewCourseSubmitApi {
+  createCourse(payload: CreateCourseInput): Promise<Course>
+  updateCourse(courseId: string, payload: UpdateCourseInput): Promise<Course>
+  deactivateCourse(courseId: string): Promise<unknown>
+}
+
+export interface NewCourseSubmitStorage {
+  saveCourse(course: Course): void
+  clearLocalDrafts(): void
+  clearEditCourse(): void
+}
+
+export interface SubmitNewCourseDependencies {
+  api: NewCourseSubmitApi
+  storage: NewCourseSubmitStorage
+}
+
+export type NewCourseEditTarget = Pick<Course, 'id' | 'estimatedTime' | 'passingThreshold' | 'rating'>
+
+export interface SubmitNewCourseRequest {
+  mode: NewCourseSubmitMode
+  form: NormalizedNewCourseForm
+  draftCourseId?: string | null
+  editCourse?: NewCourseEditTarget | null
+}
+
+interface SubmitNewCourseOutcome {
+  flow: NewCourseSubmitFlow
+  operation: NewCourseSubmitOperation
+}
+
+export type SubmitNewCourseResult =
+  | (SubmitNewCourseOutcome & { status: 'draftSaved'; course: Course })
+  | (SubmitNewCourseOutcome & { status: 'navigateToSections'; course: Course })
+  | (SubmitNewCourseOutcome & { status: 'navigateToReview'; course: Course })
+  | (SubmitNewCourseOutcome & { status: 'mediaReferenceError'; code: MediaReferenceErrorCode; error: unknown })
+  | (SubmitNewCourseOutcome & { status: 'submitError'; error: unknown })
