@@ -200,3 +200,53 @@ describe('persistFormDraft (caixa-preta)', () => {
     expect(readDraft().selectedTagIds).toHaveLength(20)
   })
 })
+
+//CAIXAS BRANCAS
+
+describe('persistFormDraft (caixa-branca)', () => {
+  afterEach(() => {
+    resetHomePageTestState()
+  })
+
+  it('CT14 [CB] D1,D2,D3,D4,D5 = F - valores dos campos sao usados, sem fallback', async () => {
+    const { container } = await mountNewCourseScreen()
+
+    fill(container, 'new-course-title', 'Titulo X')
+    fill(container, 'new-course-description', 'Descricao X')
+    fill(container, 'new-course-difficulty', 'advanced', 'change')
+    fill(container, 'new-course-category', 'Categoria X')
+    fill(container, 'new-course-image', VALID_MEDIA_ID)
+
+    const draft = readDraft()
+    expect(draft.title).toBe('Titulo X')
+    expect(draft.description).toBe('Descricao X')
+    expect(draft.difficulty).toBe('advanced') // se usasse o fallback, seria 'beginner'
+    expect(draft.category).toBe('Categoria X')
+    expect(draft.imageMediaId).toBe(VALID_MEDIA_ID)
+  })
+
+  it('CT15 [CB] D1,D2,D4,D5 = F - campo existente e vazio nao e nulo, fallback nao e usado', async () => {
+    const { container } = await mountNewCourseScreen({
+      formDraft: {
+        title: 'a',
+        description: 'b',
+        category: 'c',
+        imageMediaId: VALID_MEDIA_ID,
+      },
+    })
+
+    fill(container, 'new-course-title', '')
+    fill(container, 'new-course-description', '')
+    fill(container, 'new-course-category', '')
+    fill(container, 'new-course-image', '')
+
+    expect(readDraft()).toMatchObject({
+      title: '',
+      description: '',
+      category: '',
+      imageMediaId: '',
+    })
+  })
+
+  it.todo('CT16 [CB] D1,D2,D3,D4,D5 = V - elemento ausente do DOM (inalcancavel pela tela)')
+})
