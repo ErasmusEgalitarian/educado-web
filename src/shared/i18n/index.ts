@@ -864,6 +864,11 @@ const translations: Record<Language, TranslationTree> = {
           nameAsc: 'Nome (A-Z)',
           nameDesc: 'Nome (Z-A)',
         },
+        statusOptions: {
+          all: 'Todos os status',
+          published: 'Publicados',
+          draft: 'Rascunhos',
+        },
         edit: 'Editar',
         view: 'Visualizar',
         activate: 'Ativar',
@@ -2360,6 +2365,11 @@ const translations: Record<Language, TranslationTree> = {
           oldest: 'Oldest',
           nameAsc: 'Name (A-Z)',
           nameDesc: 'Name (Z-A)',
+        },
+        statusOptions: {
+          all: 'All statuses',
+          published: 'Published',
+          draft: 'Drafts',
         },
         edit: 'Edit',
         view: 'View',

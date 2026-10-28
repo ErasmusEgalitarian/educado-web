@@ -65,7 +65,7 @@ function selectSort(container: HTMLElement, value: string) {
   sortSelect.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
-function selectStatus(container: HTMLElement, value: 'publicado' | 'rascunho') {
+function selectStatus(container: HTMLElement, value: 'published' | 'draft') {
   const statusSelect = container.querySelector<HTMLSelectElement>('#creator-course-status')
   if (!statusSelect) throw new Error('Seletor de status não encontrado')
 
@@ -223,7 +223,6 @@ describe('getSortedAndFilteredCourses', () => {
   })
 
   it('filtra cursos publicados quando o status publicado é selecionado', async () => {
-    // RED: o controle e o parâmetro status ainda não existem na implementação.
     const container = await mountCreatorHome([
       makeCourse({
         id: 'published',
@@ -237,8 +236,27 @@ describe('getSortedAndFilteredCourses', () => {
       }),
     ])
 
-    selectStatus(container, 'publicado')
+    selectStatus(container, 'published')
 
     expect(getRenderedCourseTitles(container)).toEqual(['Curso publicado'])
+  })
+
+  it('filtra cursos em rascunho quando o status draft é selecionado', async () => {
+    const container = await mountCreatorHome([
+      makeCourse({
+        id: 'published',
+        title: 'Curso publicado',
+        publishedAt: '2026-03-01T00:00:00.000Z',
+      }),
+      makeCourse({
+        id: 'draft',
+        title: 'Curso em rascunho',
+        publishedAt: undefined,
+      }),
+    ])
+
+    selectStatus(container, 'draft')
+
+    expect(getRenderedCourseTitles(container)).toEqual(['Curso em rascunho'])
   })
 })
