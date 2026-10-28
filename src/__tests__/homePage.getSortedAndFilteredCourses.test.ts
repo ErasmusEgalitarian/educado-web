@@ -65,7 +65,7 @@ function selectSort(container: HTMLElement, value: string) {
   sortSelect.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
-function selectStatus(container: HTMLElement, value: 'published' | 'draft') {
+function selectStatus(container: HTMLElement, value: 'all' | 'published' | 'draft') {
   const statusSelect = container.querySelector<HTMLSelectElement>('#creator-course-status')
   if (!statusSelect) throw new Error('Seletor de status não encontrado')
 
@@ -127,8 +127,8 @@ describe('getSortedAndFilteredCourses', () => {
     const container = await mountCreatorHome([
       makeCourse({
         title: 'Curso de Matemática',
-        category: 'Matemática',
-        shortDescription: 'Aprenda os fundamentos da matemática',
+        category: 'Ciências Exatas',
+        shortDescription: 'Aprenda os fundamentos da álgebra',
       }),
       makeCourse({
         id: 'logic',
@@ -258,5 +258,30 @@ describe('getSortedAndFilteredCourses', () => {
     selectStatus(container, 'draft')
 
     expect(getRenderedCourseTitles(container)).toEqual(['Curso em rascunho'])
+  })
+
+  it('restaura cursos publicados e em rascunho ao selecionar all', async () => {
+    const container = await mountCreatorHome([
+      makeCourse({
+        id: 'published',
+        title: 'Curso publicado',
+        publishedAt: '2026-03-01T00:00:00.000Z',
+      }),
+      makeCourse({
+        id: 'draft',
+        title: 'Curso em rascunho',
+        publishedAt: null,
+      }),
+    ])
+
+    selectStatus(container, 'published')
+    expect(getRenderedCourseTitles(container)).toEqual(['Curso publicado'])
+
+    selectStatus(container, 'all')
+    expect(getRenderedCourseTitles(container)).toHaveLength(2)
+    expect(getRenderedCourseTitles(container)).toEqual([
+      'Curso publicado',
+      'Curso em rascunho',
+    ])
   })
 })
