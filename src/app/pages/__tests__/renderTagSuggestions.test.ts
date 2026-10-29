@@ -182,3 +182,102 @@ describe('renderTagSuggestions (caixa-preta)', () => {
     expectListHidden(container)
   })
 })
+
+describe('renderTagSuggestions (caixa-branca, MC/DC)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    resetHomePageTestState()
+  })
+
+  const react = () => makeTag({ id: 'r', name: 'React', slug: 'frontend' })
+
+  it('CT18 [CB] D1-D11 verdadeiras: sugere, clica e adiciona a tag', async () => {
+    const { container } = await mountNewCourseScreen({ tags: [react()] })
+    type(container, 'rea')
+    expect(list(container).hidden).toBe(false)
+    expect(names(container)).toEqual(['React'])
+    buttons(container)[0].click()
+    const found = chips(container)
+    expect(found).toHaveLength(1)
+    expect(found[0].textContent).toContain('React')
+    expect(query(container).value).toBe('')
+    expectListHidden(container)
+  })
+
+  it('CT19 [CB] D1F lista de sugestoes ausente: sai sem erro e nao desenha nada', async () => {
+    const original = document.getElementById.bind(document)
+    vi.spyOn(document, 'getElementById').mockImplementation((id: string) =>
+      id === 'new-course-tags-suggestions' ? null : original(id),
+    )
+    const { container } = await mountNewCourseScreen({ tags: [react()] })
+    vi.restoreAllMocks()
+    expect(() => type(container, 'rea')).not.toThrow()
+    expect(container.querySelectorAll('.new-course-tag-suggestion')).toHaveLength(0)
+  })
+
+  it('CT20 [CB] D3F,D2F texto vazio esconde a lista', async () => {
+    const { container } = await mountNewCourseScreen({ tags: [react()] })
+    query(container).dispatchEvent(new Event('focus'))
+    expectListHidden(container)
+  })
+
+  it('CT21 [CB] D4F,D7F,D2F tag desativada esconde a lista', async () => {
+    const { container } = await mountNewCourseScreen({ tags: [makeTag({ id: 'r', name: 'React', slug: 'frontend', isActive: false })] })
+    type(container, 'rea')
+    expectListHidden(container)
+  })
+
+  it('CT22 [CB] D5F,D7F,D2F tag ja no curso esconde a lista', async () => {
+    const { container } = await mountNewCourseScreen({ tags: [react()], formDraft: { selectedTagIds: ['r'] } })
+    type(container, 'rea')
+    expectListHidden(container)
+  })
+
+  it('CT23 [CB] D6F,D7F,D2F tag que nao combina esconde a lista', async () => {
+    const { container } = await mountNewCourseScreen({ tags: [makeTag({ id: 'v', name: 'Vue', slug: 'vue' })] })
+    type(container, 'rea')
+    expectListHidden(container)
+  })
+
+  it('CT24 [CB] D8F botao sem id de tag: clique ignorado', async () => {
+    const { container } = await mountNewCourseScreen({ tags: [react()] })
+    type(container, 'rea')
+    const button = buttons(container)[0]
+    button.removeAttribute('data-tag-id')
+    button.click()
+    expect(chips(container)).toHaveLength(0)
+    expect(list(container).hidden).toBe(false)
+    expect(names(container)).toEqual(['React'])
+  })
+
+  it('CT25 [CB] D9F id inexistente: clique ignorado sem aviso', async () => {
+    const { container, mocks } = await mountNewCourseScreen({ tags: [react()] })
+    type(container, 'rea')
+    buttons(container)[0].setAttribute('data-tag-id', 'inexistente')
+    buttons(container)[0].click()
+    expect(chips(container)).toHaveLength(0)
+    expect(mocks.toast).not.toHaveBeenCalled()
+  })
+
+  it('CT26 [CB] D10F curso com 20 tags: mostra aviso e nao adiciona', async () => {
+    const selected = jsTags(20)
+    const { container, mocks } = await mountNewCourseScreen({
+      tags: [...selected, react()],
+      formDraft: { selectedTagIds: selected.map((t) => t.id) },
+    })
+    type(container, 'rea')
+    buttons(container)[0].click()
+    expect(mocks.toast).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).toHaveBeenCalledWith(expect.stringMatching(/20 tags/), 'error')
+    expect(chips(container)).toHaveLength(20)
+  })
+
+  it('CT27 [CB] D6C so o apelido combina com o texto', async () => {
+    const { container } = await mountNewCourseScreen({
+      tags: [makeTag({ id: 'am', name: 'Aprendizado de Máquina', slug: 'area-dados' })],
+    })
+    type(container, 'rea')
+    expect(list(container).hidden).toBe(false)
+    expect(names(container)).toEqual(['Aprendizado de Máquina'])
+  })
+})
