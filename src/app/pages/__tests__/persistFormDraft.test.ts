@@ -159,15 +159,6 @@ describe('persistFormDraft (caixa-preta)', () => {
     expect(readDraft().description).toHaveLength(401)
   })
 
-  // ATENCAO: este teste pode ficar VERMELHO. Ver nota abaixo do codigo.
-  it('CT10 [CP] C10 - dificuldade fora das opcoes nao vira valor invalido', async () => {
-    const { container } = await mountNewCourseScreen()
-
-    fill(container, 'new-course-difficulty', 'expert', 'change')
-
-    expect(['beginner', 'intermediate', 'advanced']).toContain(readDraft().difficulty)
-  })
-
   it('CT11 [CP] C15 - imagem com formato invalido e gravada crua', async () => {
     const { container } = await mountNewCourseScreen()
 
@@ -246,6 +237,15 @@ describe('persistFormDraft (caixa-branca)', () => {
       category: '',
       imageMediaId: '',
     })
+  })
+
+  // ATENCAO: este teste foi movido para a caixa-branca, mapeado como decisao D3
+  it('CT10 [CB] D3 - dificuldade fora das opcoes nao vira valor invalido', async () => {
+    const { container } = await mountNewCourseScreen()
+
+    fill(container, 'new-course-difficulty', 'expert', 'change')
+
+    expect(['beginner', 'intermediate', 'advanced']).toContain(readDraft().difficulty)
   })
 
   it.todo('CT16 [CB] D1,D2,D3,D4,D5 = V - elemento ausente do DOM (inalcancavel pela tela)')
