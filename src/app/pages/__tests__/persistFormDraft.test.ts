@@ -256,6 +256,26 @@ describe('persistFormDraft (caixa-branca)', () => {
 
 // TDD - Fase de Extração
 describe('TDD: buildFormDraft (Função Extraída)', () => {
+
+
+    it('deve aplicar o valor padrão "beginner" se a dificuldade for uma string vazia (Correção CT10)', () => {
+    // 1.Passamos o ofensor do CT10: difficulty como string vazia ''
+    const fields = {
+      title: 'Teste Defeito',
+      description: 'Testando string vazia',
+      difficulty: '', 
+      category: 'Categoria',
+      imageMediaId: 'img-1'
+    }
+    
+    // 2. Chamamos a função extraída
+    const draft = buildFormDraft(fields, [])
+
+    // 3. Verificamos se ela se protegeu e aplicou 'beginner'
+    expect(draft.difficulty).toBe('beginner')
+  })
+
+
   it('deve montar o objeto de rascunho corretamente com os parâmetros fornecidos', () => {
     // 1. Preparamos entradas puras, sem depender de DOM
     const fields = {
