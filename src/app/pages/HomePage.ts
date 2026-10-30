@@ -937,18 +937,19 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     sessionStorage.removeItem(COURSE_HOME_SECTIONS_LOCAL_STORAGE_KEY)
   }
 
-  const persistFormDraft = () => {
-    const draft: NewCourseFormDraft = {
-      title: titleInput?.value ?? '',
-      description: descriptionInput?.value ?? '',
-      difficulty: ((difficultyInput?.value ?? 'beginner') as CreateCourseInput['difficulty']),
-      category: categoryInput?.value ?? '',
-      imageMediaId: imageInput?.value ?? '',
-      selectedTagIds: selectedTags.map((tag) => tag.id),
-    }
-
-    sessionStorage.setItem(COURSE_HOME_FORM_DRAFT_STORAGE_KEY, JSON.stringify(draft))
+const persistFormDraft = () => {
+  const fields = {
+    title: titleInput?.value,
+    description: descriptionInput?.value,
+    difficulty: difficultyInput?.value,
+    category: categoryInput?.value,
+    imageMediaId: imageInput?.value
   }
+
+  const draft = buildFormDraft(fields, selectedTags)
+  
+  sessionStorage.setItem(COURSE_HOME_FORM_DRAFT_STORAGE_KEY, JSON.stringify(draft))
+}
 
   const closeCancelCourseModal = () => {
     cancelModalOpen = false
