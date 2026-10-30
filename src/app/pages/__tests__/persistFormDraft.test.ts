@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { makeTag, mountNewCourseScreen, resetHomePageTestState } from '@/test-utils/homePage'
 
+import { buildFormDraft } from '../HomePage'
+
 vi.mock('@/shared/api/auth-session')
 vi.mock('@/features/courses/api/courses.api')
 vi.mock('@/features/courses/api/sections.api')

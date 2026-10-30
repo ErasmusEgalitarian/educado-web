@@ -27,6 +27,22 @@ type MediaErrorContext = 'course' | 'exercise'
 let homePageAbortController: AbortController | null = null
 let homePageCleanupCallbacks: Array<() => void> = []
 
+
+
+// Nova função (TDD Green fase)
+  export const buildFormDraft = (fields: any, selectedTags: any[]) => {
+  return {
+    title: fields.title ?? '',
+    description: fields.description ?? '',
+    difficulty: fields.difficulty ?? 'beginner',
+    category: fields.category ?? '',
+    imageMediaId: fields.imageMediaId ?? '',
+    selectedTagIds: selectedTags.map((tag) => tag.id),
+  }
+}
+
+
+
 function ensureHomePageAbortController() {
   if (!homePageAbortController || homePageAbortController.signal.aborted) {
     homePageAbortController = new AbortController()
