@@ -250,3 +250,37 @@ describe('persistFormDraft (caixa-branca)', () => {
 
   it.todo('CT16 [CB] D1,D2,D3,D4,D5 = V - elemento ausente do DOM (inalcancavel pela tela)')
 })
+
+
+// TDD - Fase de Extração
+describe('TDD: buildFormDraft (Função Extraída)', () => {
+  it('deve montar o objeto de rascunho corretamente com os parâmetros fornecidos', () => {
+    // 1. Preparamos entradas puras, sem depender de DOM
+    const fields = {
+      title: 'Curso de TDD',
+      description: 'Aprendendo a extrair funções',
+      difficulty: 'advanced',
+      category: 'Programação',
+      imageMediaId: 'img-999'
+    }
+    
+    // Simulamos a lista de tags que a função original usava
+    const selectedTags = [
+      { id: 'tag-1', name: 'React', isActive: true, slug: 'react' }, 
+      { id: 'tag-2', name: 'Testes', isActive: true, slug: 'testes' }
+    ]
+
+    // 2. Chamamos a nova função que AINDA NÃO EXISTE
+    const result = buildFormDraft(fields, selectedTags)
+
+    // 3. Verificamos se ela retorna exatamente o formato esperado pelo sessionStorage
+    expect(result).toEqual({
+      title: 'Curso de TDD',
+      description: 'Aprendendo a extrair funções',
+      difficulty: 'advanced',
+      category: 'Programação',
+      imageMediaId: 'img-999',
+      selectedTagIds: ['tag-1', 'tag-2']
+    })
+  })
+})
