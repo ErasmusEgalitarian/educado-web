@@ -34,7 +34,8 @@ let homePageCleanupCallbacks: Array<() => void> = []
   return {
     title: fields.title ?? '',
     description: fields.description ?? '',
-    difficulty: fields.difficulty ?? 'beginner',
+     // change ?? to || to deny undef,null AND empty string (Green)
+    difficulty: fields.difficulty || 'beginner',
     category: fields.category ?? '',
     imageMediaId: fields.imageMediaId ?? '',
     selectedTagIds: selectedTags.map((tag) => tag.id),
