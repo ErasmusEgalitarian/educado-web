@@ -2,9 +2,25 @@ import { getAccessToken, getCurrentUser } from '@/shared/api/auth-session'
 import { coursesApi } from '@/features/courses/api/courses.api'
 import { sectionsApi } from '@/features/courses/api/sections.api'
 import { activitiesApi } from '@/features/courses/api/activities.api'
-import type { Activity, ActivityType, Course, CreateCourseInput, Section, Tag } from '@/features/courses/model/course.types'
+import type { Activity, ActivityType, Course, Section, Tag } from '@/features/courses/model/course.types'
+import {
+  buildCreateCoursePayload,
+  NEW_COURSE_DESCRIPTION_MAX_LENGTH,
+  NEW_COURSE_DESCRIPTION_MIN_LENGTH,
+  NEW_COURSE_TITLE_MIN_LENGTH,
+  normalizeNewCourseForm,
+  validateNewCourseForm,
+} from '@/features/courses/new-course/newCourseForm'
+import type {
+  NewCourseField,
+  NewCourseFormDraft,
+  NewCourseFormInput,
+  NewCourseSubmitMode,
+  NewCourseValidationErrorCode,
+} from '@/features/courses/new-course/newCourse.types'
 import { tagsApi } from '@/features/courses/api/tags.api'
 import { mediaApi, type MediaResponse } from '@/features/media/api/media.api'
+import { isValidMediaIdFormat } from '@/features/media/model/media-id'
 import { uploadManager, type UploadJob } from '@/features/media/services/upload-manager'
 import { ApiError } from '@/shared/api/http'
 import { toast } from '@/shared/ui/toast'
@@ -19,9 +35,6 @@ const COURSE_HOME_VIEW_STORAGE_KEY = 'educado.courses.homeView'
 const COURSE_HOME_DRAFT_STORAGE_KEY = 'educado.courses.draft'
 const COURSE_HOME_FORM_DRAFT_STORAGE_KEY = 'educado.courses.formDraft'
 const COURSE_HOME_SECTIONS_LOCAL_STORAGE_KEY = 'educado.courses.sectionsLocal'
-const MONGO_ID_REGEX = /^[a-f\d]{24}$/i
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
 type MediaErrorContext = 'course' | 'exercise'
 
 let homePageAbortController: AbortController | null = null
@@ -107,10 +120,6 @@ export function destroyHomePage() {
   })
 
   document.body.classList.remove('sections-modal-open')
-}
-
-function isValidMediaIdFormat(mediaId: string) {
-  return MONGO_ID_REGEX.test(mediaId) || UUID_REGEX.test(mediaId)
 }
 
 function getMediaReferenceErrorMessage(error: unknown, context: MediaErrorContext) {
@@ -766,14 +775,27 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
   }
 
   const nt = (path: string, params?: Record<string, string | number>) => t(`courses.newCourse.${path}`, params)
-
-  type NewCourseFormDraft = {
-    title: string
-    description: string
-    difficulty: CreateCourseInput['difficulty']
-    category: string
-    imageMediaId: string
-    selectedTagIds: string[]
+  const validationErrorPaths: Record<NewCourseValidationErrorCode, string> = {
+    TITLE_REQUIRED: 'errors.titleRequired',
+    TITLE_TOO_SHORT: 'errors.titleMin',
+    DESCRIPTION_REQUIRED: 'errors.descriptionRequired',
+    DESCRIPTION_TOO_SHORT: 'errors.descriptionMin',
+    DESCRIPTION_TOO_LONG: 'errors.descriptionMax',
+    CATEGORY_REQUIRED: 'errors.categoryRequired',
+    IMAGE_REQUIRED: 'errors.imageRequired',
+    IMAGE_INVALID_FORMAT: 'errors.imageInvalidFormat',
+  }
+  const getValidationErrorMessage = (code: NewCourseValidationErrorCode) => {
+    if (code === 'TITLE_TOO_SHORT') {
+      return nt(validationErrorPaths[code], { min: NEW_COURSE_TITLE_MIN_LENGTH })
+    }
+    if (code === 'DESCRIPTION_TOO_SHORT') {
+      return nt(validationErrorPaths[code], { min: NEW_COURSE_DESCRIPTION_MIN_LENGTH })
+    }
+    if (code === 'DESCRIPTION_TOO_LONG') {
+      return nt(validationErrorPaths[code], { max: NEW_COURSE_DESCRIPTION_MAX_LENGTH })
+    }
+    return nt(validationErrorPaths[code])
   }
 
   container.innerHTML = `
@@ -821,7 +843,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
             <form id="new-course-form" class="new-course-form">
               <label class="new-course-field">
                 <span>${nt('fields.name')} <em>*</em></span>
-                <input id="new-course-title" type="text" placeholder="${nt('fields.namePlaceholder')}" required minlength="3">
+                <input id="new-course-title" type="text" placeholder="${nt('fields.namePlaceholder')}" required minlength="${NEW_COURSE_TITLE_MIN_LENGTH}">
               </label>
 
               <div class="new-course-row">
@@ -842,8 +864,8 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
 
               <label class="new-course-field">
                 <span>${nt('fields.description')} <em>*</em></span>
-                <textarea id="new-course-description" placeholder="${nt('fields.descriptionPlaceholder')}" rows="5" maxlength="400" required></textarea>
-                <small id="new-course-description-count">0 / 400 caracteres</small>
+                <textarea id="new-course-description" placeholder="${nt('fields.descriptionPlaceholder')}" rows="5" maxlength="${NEW_COURSE_DESCRIPTION_MAX_LENGTH}" required></textarea>
+                <small id="new-course-description-count">0 / ${NEW_COURSE_DESCRIPTION_MAX_LENGTH} caracteres</small>
               </label>
 
               <label class="new-course-field">
@@ -925,7 +947,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     const draft: NewCourseFormDraft = {
       title: titleInput?.value ?? '',
       description: descriptionInput?.value ?? '',
-      difficulty: ((difficultyInput?.value ?? 'beginner') as CreateCourseInput['difficulty']),
+      difficulty: ((difficultyInput?.value ?? 'beginner') as NewCourseFormDraft['difficulty']),
       category: categoryInput?.value ?? '',
       imageMediaId: imageInput?.value ?? '',
       selectedTagIds: selectedTags.map((tag) => tag.id),
@@ -1169,74 +1191,44 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     persistFormDraft()
   }
 
-  const submitNewCourse = async (mode: 'draft' | 'next' | 'review') => {
-    const title = titleInput?.value.trim() ?? ''
-    const description = descriptionInput?.value.trim() ?? ''
-    const difficulty = (difficultyInput?.value ?? 'beginner') as CreateCourseInput['difficulty']
-    const category = categoryInput?.value.trim() ?? ''
-    const imageMediaId = imageInput?.value.trim() ?? ''
-    const tagIds = selectedTags.map((tag) => tag.id)
+  const submitNewCourse = async (mode: NewCourseSubmitMode) => {
+    const formData = normalizeNewCourseForm({
+      title: titleInput?.value ?? '',
+      description: descriptionInput?.value ?? '',
+      difficulty: (difficultyInput?.value ?? 'beginner') as NewCourseFormInput['difficulty'],
+      category: categoryInput?.value ?? '',
+      imageMediaId: imageInput?.value ?? '',
+      tagIds: selectedTags.map((tag) => tag.id),
+    })
+    const validation = validateNewCourseForm(formData)
 
     clearFieldError(titleInput)
     clearFieldError(descriptionInput)
     clearFieldError(categoryInput)
     clearFieldError(imageInput)
 
-    let isValid = true
+    if (!validation.isValid) {
+      const fields: Record<NewCourseField, HTMLInputElement | HTMLTextAreaElement | null> = {
+        title: titleInput,
+        description: descriptionInput,
+        category: categoryInput,
+        imageMediaId: imageInput,
+      }
 
-    if (!title) {
-      setFieldError(titleInput, nt('errors.titleRequired'))
-      isValid = false
-    }
-
-    if (title && title.length < 3) {
-      setFieldError(titleInput, nt('errors.titleMin'))
-      isValid = false
-    }
-
-    if (!description) {
-      setFieldError(descriptionInput, nt('errors.descriptionRequired'))
-      isValid = false
-    }
-
-    if (description && description.length < 20) {
-      setFieldError(descriptionInput, nt('errors.descriptionMin'))
-      isValid = false
-    }
-
-    if (!category) {
-      setFieldError(categoryInput, nt('errors.categoryRequired'))
-      isValid = false
-    }
-
-    if (!imageMediaId) {
-      setFieldError(imageInput, nt('errors.imageRequired'))
-      isValid = false
-    } else if (!isValidMediaIdFormat(imageMediaId)) {
-      setFieldError(imageInput, nt('errors.imageInvalidFormat'))
-      isValid = false
-    }
-
-    if (!isValid) {
+      validation.errors.forEach((error) => {
+        setFieldError(fields[error.field], getValidationErrorMessage(error.code))
+      })
       toast(nt('errors.requiredFields'), 'error')
       return
     }
 
     if (isEditMode && editCourse) {
       try {
-        const editPayload: CreateCourseInput = {
-          title,
-          description,
-          shortDescription: description.slice(0, 120),
-          imageMediaId,
-          difficulty,
+        const editPayload = buildCreateCoursePayload(formData, {
           estimatedTime: editCourse.estimatedTime || '8 horas',
           passingThreshold: editCourse.passingThreshold ?? 70,
-          category,
-          tags: [],
-          tagIds,
           rating: editCourse.rating ?? null,
-        }
+        })
         const updatedCourse = await coursesApi.updateCourse(editCourse.id, editPayload)
         sessionStorage.setItem(COURSE_HOME_DRAFT_STORAGE_KEY, JSON.stringify(updatedCourse))
         persistFormDraft()
@@ -1275,19 +1267,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     }
 
     try {
-      const payload: CreateCourseInput = {
-        title,
-        description,
-        shortDescription: description.slice(0, 120),
-        imageMediaId,
-        difficulty,
-        estimatedTime: '8 horas',
-        passingThreshold: 70,
-        category,
-        tags: [],
-        tagIds,
-        rating: null,
-      }
+      const payload = buildCreateCoursePayload(formData)
 
       const upsertedCourse = draftCourse?.id
         ? await coursesApi.updateCourse(draftCourse.id, payload)
@@ -1335,12 +1315,12 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
   if (imageInput) imageInput.value = formDraft?.imageMediaId ?? draftCourse?.imageMediaId ?? editCourse?.imageMediaId ?? ''
 
   if (descriptionInput && descriptionCount) {
-    descriptionCount.textContent = `${descriptionInput.value.length} / 400 caracteres`
+    descriptionCount.textContent = `${descriptionInput.value.length} / ${NEW_COURSE_DESCRIPTION_MAX_LENGTH} caracteres`
   }
 
   descriptionInput?.addEventListener('input', () => {
     if (!descriptionInput || !descriptionCount) return
-    descriptionCount.textContent = `${descriptionInput.value.length} / 400 caracteres`
+    descriptionCount.textContent = `${descriptionInput.value.length} / ${NEW_COURSE_DESCRIPTION_MAX_LENGTH} caracteres`
     persistFormDraft()
   })
 
@@ -1582,7 +1562,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
   })
 
   titleInput?.addEventListener('input', () => {
-    if ((titleInput.value ?? '').trim().length >= 3) clearFieldError(titleInput)
+    if ((titleInput.value ?? '').trim().length >= NEW_COURSE_TITLE_MIN_LENGTH) clearFieldError(titleInput)
     persistFormDraft()
   })
 
@@ -1592,8 +1572,8 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
       setFieldError(titleInput, nt('errors.titleRequired'))
       return
     }
-    if (value.length < 3) {
-      setFieldError(titleInput, nt('errors.titleMin'))
+    if (value.length < NEW_COURSE_TITLE_MIN_LENGTH) {
+      setFieldError(titleInput, getValidationErrorMessage('TITLE_TOO_SHORT'))
       return
     }
     clearFieldError(titleInput)
@@ -1639,8 +1619,12 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
       setFieldError(descriptionInput, nt('errors.descriptionRequired'))
       return
     }
-    if (value.length < 20) {
-      setFieldError(descriptionInput, nt('errors.descriptionMin'))
+    if (value.length < NEW_COURSE_DESCRIPTION_MIN_LENGTH) {
+      setFieldError(descriptionInput, getValidationErrorMessage('DESCRIPTION_TOO_SHORT'))
+      return
+    }
+    if (value.length > NEW_COURSE_DESCRIPTION_MAX_LENGTH) {
+      setFieldError(descriptionInput, getValidationErrorMessage('DESCRIPTION_TOO_LONG'))
       return
     }
     clearFieldError(descriptionInput)
