@@ -956,9 +956,15 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
 
   addButton?.addEventListener('click', () => {
     const courseId = priorRecommendationInput?.value.trim()
-    const course = availableCourses.find(({ id }) => id === courseId)
+    if (!courseId) return
 
-    if (!courseId || !course) return
+    if (!isValidMediaIdFormat(courseId)) {
+      setFieldError(priorRecommendationInput, nt('priorRecommendations.errors.invalidId'))
+      return
+    }
+
+    const course = availableCourses.find(({ id }) => id === courseId)
+    if (!course) return
 
     selectedPriorRecommendations.push({
       courseId,
@@ -1102,6 +1108,12 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     const errorElement = fieldContainer?.querySelector('.new-course-field-error')
     errorElement?.remove()
   }
+
+  priorRecommendationInput?.addEventListener('input', () => {
+    if (priorRecommendationInput.classList.contains('is-invalid')) {
+      clearFieldError(priorRecommendationInput)
+    }
+  })
 
   const hashPastelColor = (value: string) => {
     let hash = 0
