@@ -24,7 +24,8 @@ export async function submitNewCourse(
 ): Promise<SubmitNewCourseResult> {
   const { mode, form, editCourse } = request
   const flow: NewCourseSubmitFlow = editCourse ? 'edit' : 'create'
-  const targetCourseId = editCourse ? editCourse.id : request.draftCourseId || null
+  const draftCourseId = request.draftCourseId?.trim() || null
+  const targetCourseId = editCourse ? editCourse.id : draftCourseId
   const operation: NewCourseSubmitOperation = targetCourseId ? 'update' : 'create'
 
   try {

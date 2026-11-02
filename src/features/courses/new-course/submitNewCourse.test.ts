@@ -299,6 +299,16 @@ describe('submitNewCourse — branches da implementação', () => {
     expect(api.updateCourse).not.toHaveBeenCalled()
   })
 
+  it('trata identificador de rascunho com espaços como ausência de rascunho', async () => {
+    const { api, dependencies } = createDependencies()
+
+    const result = await submitNewCourse(request({ draftCourseId: '   ' }), dependencies)
+
+    expect(result).toMatchObject({ operation: 'create' })
+    expect(api.createCourse).toHaveBeenCalledTimes(1)
+    expect(api.updateCourse).not.toHaveBeenCalled()
+  })
+
   it('aplica os valores padrão quando o curso editado não possui tempo estimado nem avaliação', async () => {
     const { api, dependencies } = createDependencies()
 
