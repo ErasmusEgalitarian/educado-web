@@ -8,6 +8,11 @@ export default mergeConfig(
       environment: 'jsdom',
       setupFiles: ['./src/setupTests.ts'],
       include: ['src/**/*.test.ts'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'html', 'json-summary'],
+        skipFull: false,
+      },
     },
   })
 )
