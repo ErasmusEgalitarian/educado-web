@@ -940,7 +940,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     if (!chipsContainer) return
 
     chipsContainer.hidden = selectedPriorRecommendations.length === 0
-    chipsContainer.innerHTML = selectedPriorRecommendations.map((recommendation) => {
+    chipsContainer.innerHTML = selectedPriorRecommendations.map((recommendation, index) => {
       const course = availableCourses.find(({ id }) => id === recommendation.courseId)
       const title = course?.title ?? nt('priorRecommendations.courseFallback')
       const status = recommendation.mandatory
@@ -948,10 +948,23 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
         : nt('priorRecommendations.optional')
 
       return ` 
-        <div class="new-course-prior-recommendation-item"> ${escapeHtml(title)} (${escapeHtml(recommendation.courseId.slice(0, 7))}...) - ${status}
+        <div class="new-course-prior-recommendation-item">
+          <span>${escapeHtml(title)} (${escapeHtml(recommendation.courseId.slice(0, 7))}...) - ${status}</span>
+          <button type="button" class="new-course-prior-recommendation-remove" data-index="${index}" aria-label="${t('common.removeItem')}">×</button>
         </div>
       `
     }).join('')
+
+    chipsContainer.querySelectorAll<HTMLButtonElement>('.new-course-prior-recommendation-remove').forEach((button) => {
+      button.addEventListener('click', () => {
+        const index = Number(button.dataset.index)
+        if (!Number.isInteger(index) || index < 0 || index >= selectedPriorRecommendations.length) return
+
+        selectedPriorRecommendations.splice(index, 1)
+        renderRecommendations()
+        persistFormDraft()
+      })
+    })
   }
 
   renderRecommendations()
