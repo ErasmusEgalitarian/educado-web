@@ -2290,6 +2290,9 @@ const translations: Record<Language, TranslationTree> = {
         },
         priorRecommendations: {
           mandatory: 'Required',
+          errors: {
+            courseNotFound: 'Course not found',
+          },
         },
         difficultyOptions: {
           beginner: 'Beginner',

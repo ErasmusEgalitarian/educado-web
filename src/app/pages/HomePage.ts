@@ -964,7 +964,10 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     }
 
     const course = availableCourses.find(({ id }) => id === courseId)
-    if (!course) return
+    if (!course) {
+      setFieldError(priorRecommendationInput, nt('priorRecommendations.errors.courseNotFound'))
+      return
+    }
 
     selectedPriorRecommendations.push({
       courseId,
