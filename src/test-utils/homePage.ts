@@ -74,6 +74,12 @@ export type MountOptions = {
   formDraft?: Record<string, unknown>
   /** Objeto gravado em 'educado.courses.draft' (usado por 'sections' e 'review'). */
   draft?: Partial<Course>
+
+  // Lista os cursos existentes na API usados para recomendações prévias.
+  courses?: Array<{
+    id: string
+    title: string
+  }>
 }
 
 export type MountedScreen = {
@@ -87,6 +93,9 @@ async function mountView(view: 'create' | 'sections' | 'review', opts: MountOpti
   sessionStorage.setItem(VIEW_KEY, view)
   if (opts.formDraft) sessionStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(opts.formDraft))
   if (opts.draft) sessionStorage.setItem(DRAFT_KEY, JSON.stringify(opts.draft))
+  if (opts.courses) {
+    sessionStorage.setItem('educado.courses.availableCourses', JSON.stringify(opts.courses))
+  }
 
   const container = document.createElement('div')
   document.body.appendChild(container)

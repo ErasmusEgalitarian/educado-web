@@ -12,6 +12,11 @@ export interface Tag {
   updatedAt: string
 }
 
+export interface PriorRecommendation {
+  courseId: string
+  mandatory: boolean
+}
+
 export interface Course {
   id: string
   ownerId: string
@@ -31,6 +36,7 @@ export interface Course {
   updatedAt: string
   deletedAt?: string | null
   reusableTags?: Tag[]
+  priorRecommendations?: PriorRecommendation[]
   sections?: (Section & { activities?: Activity[] })[]
 }
 
@@ -113,6 +119,7 @@ export type CreateCourseInput = Pick<
 > & {
   rating?: number | null
   tagIds?: string[]
+  priorRecommendations?: PriorRecommendation[]
 }
 
 export type UpdateCourseInput = CreateCourseInput
