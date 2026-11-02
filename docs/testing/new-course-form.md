@@ -20,8 +20,9 @@ Estão incluídos:
 - testes de caixa-preta, caixa-branca e MC/DC;
 - geração de cobertura com Vitest e V8.
 
-A orquestração assíncrona de API, persistência, mensagens e navegação ainda
-permanece em `HomePage.ts` e constitui uma evolução separada.
+A orquestração assíncrona de API e persistência foi extraída posteriormente para
+`submitNewCourse.ts` e está documentada em
+[`submit-new-course.md`](submit-new-course.md).
 
 ## Arquitetura
 
@@ -57,9 +58,9 @@ validateNewCourseForm
  ↓
 Mapeamento de erros para campos e traduções
  ↓
-buildCreateCoursePayload
+submitNewCourse (payload, API e armazenamento)
  ↓
-API, armazenamento, mensagens e navegação
+Mensagens e navegação
 ```
 
 ## Funções extraídas
@@ -190,11 +191,10 @@ Na validação desta alteração:
 
 ## Limites e evolução futura
 
-`submitNewCourse` ainda contém a orquestração assíncrona dentro de
-`HomePage.ts`. Uma extração futura deve tornar explícitas as dependências de API e
-armazenamento e devolver um resultado que a página converta em mensagens e
-navegação. O novo módulo não deve manipular DOM, traduzir textos ou importar a
-página.
+A orquestração assíncrona foi extraída para `submitNewCourse.ts`, com
+dependências de API e armazenamento explícitas e um resultado estruturado que a
+página converte em mensagens e navegação. Os detalhes estão em
+[`submit-new-course.md`](submit-new-course.md).
 
 Não foi realizado teste manual integrado com o backend. O build também mantém um
 aviso não bloqueante sobre o tamanho do chunk principal.
