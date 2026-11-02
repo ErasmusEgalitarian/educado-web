@@ -50,6 +50,7 @@ describe('Course Prior Recommendations', () => {
   })
 
   // CICLO 1: checkbox com default = false e adição de uma recomendação opcional
+  // RN 2: cada recomendação é opcional por padrão.
   it('Defaults the required checkbox to unchecked', async () => {
     const { container } = await mountNewCourseScreen({
       courses: [],
@@ -61,7 +62,7 @@ describe('Course Prior Recommendations', () => {
     expect(mandatoryCheckbox?.checked).toBe(false);
   });
 
-  // RN 2: Allows a recommendation to be optional.
+  // RN 2, 3, 4, 5: adiciona um curso pelo ID como opcional e exibe nome e prefixo do ID.
   it('Adds a valid optional recommendation', async () => {
     const validCourseId = '123e4567-e89b-12d3-a456-426614174000';
     const availableCourses = [{ id: validCourseId, title: 'Curso de Lógica' }];
@@ -96,7 +97,8 @@ describe('Course Prior Recommendations', () => {
     expect(mandatoryCheckbox.checked).toBe(false);
   });
 
-  // CICLO 2: preservar a escolha de recomendação obrigatória.
+  // CICLO 2: checkbox com default = true e adição de uma recomendação obrigatória
+  // RN 2, 3, 4, 5: adiciona curso pelo ID como obrigatório, exibe seus dados e salva a escolha.
   it('Adds a valid mandatory prior recommendation and checks the saved draft', async () => {
     const validCourseId = '123e4567-e89b-12d3-a456-426614174000';
     const validCourseName = 'Curso Base de Algoritmos';
@@ -124,6 +126,7 @@ describe('Course Prior Recommendations', () => {
   });
 
   // CICLO 3: rejeitar um ID que não segue o formato esperado.
+  // RN 3, 9.1
   it('Marks the field invalid and shows an error for an invalid ID format', async () => {
     const { container } = await mountNewCourseScreen({
       courses: [],
@@ -150,6 +153,7 @@ describe('Course Prior Recommendations', () => {
     expect(fieldError).not.toBeNull();
   });
 
+  // Limpa mensagem de erro quando o ID é corrigido
   it('Clears the invalid state when the recommendation ID is corrected', async () => {
     const validCourseId = '123e4567-e89b-12d3-a456-426614174000'
     const { container } = await mountNewCourseScreen({
@@ -171,6 +175,7 @@ describe('Course Prior Recommendations', () => {
   })
 
   // CICLO 4: rejeitar um ID bem formado que não identifica curso disponível.
+  // RN 3, 9.2
   it('Shows an error when the course ID does not exist', async () => {
     const { container } = await mountNewCourseScreen({
       courses: [],
@@ -189,7 +194,8 @@ describe('Course Prior Recommendations', () => {
     expect(container.querySelector('.new-course-field-error')?.textContent).toContain('Course not found');
   });
 
-  // CICLO 5: impedir a inclusão do mesmo curso mais de uma vez.
+  // CICLO 5: rejeitar uma recomendação duplicada.
+  // RN 9.3
   it('Rejects a duplicate prior recommendation', async () => {
     const courseId = '123e4567-e89b-12d3-a456-426614174000'
     const { container } = await mountNewCourseScreen({
@@ -209,6 +215,7 @@ describe('Course Prior Recommendations', () => {
   })
 
   // CICLO 6: renderizar recomendação salva quando o curso não está carregado.
+  // RN 5, 6
   it('Uses a fallback title when the recommended course is unavailable', async () => {
     const courseId = '123e4567-e89b-12d3-a456-426614174000'
     const { container } = await mountNewCourseScreen({
@@ -222,6 +229,7 @@ describe('Course Prior Recommendations', () => {
   })
 
   // CICLO 7: remover uma recomendação selecionada e persistir a remoção.
+  // RN 4, 7
   it('Removes a prior recommendation and persists the change', async () => {
     const courseId = '123e4567-e89b-12d3-a456-426614174000'
     const { container } = await mountNewCourseScreen({
@@ -237,6 +245,7 @@ describe('Course Prior Recommendations', () => {
   })
 
   // CICLO 8: permitir cinco recomendações e bloquear a sexta.
+  // RN 1
   it('Prevents adding more than five prior recommendations', async () => {
     const availableCourses = [
       { id: '123e4567-e89b-12d3-a456-426614174001', title: 'Curso 1' },
@@ -274,6 +283,7 @@ describe('Course Prior Recommendations', () => {
   });
 
   // CICLO 9: incluir recomendações selecionadas no payload de criação.
+  // RN 1, 2
   it('Sends prior recommendations in the course creation payload', async () => {
     const validCourseId = '123e4567-e89b-12d3-a456-426614174000'
     const { container, mocks } = await mountNewCourseScreen({
@@ -318,7 +328,8 @@ describe('Course Prior Recommendations', () => {
     )
   })
 
-  // Ciclo 10
+  // Ciclo 10: Carregamento de cursos ativos de qualquer criador
+  // RN 3, 9.4
   it('Loads courses from any creator for a regular user', async () => {
     const courseId = '123e4567-e89b-12d3-a456-426614174000'
     homePageMocks.coursesApi.getCourses.mockResolvedValue([
@@ -333,6 +344,99 @@ describe('Course Prior Recommendations', () => {
     container.querySelector<HTMLButtonElement>('#new-course-add-prior-recommendation')?.click()
     expect(container.querySelector('.new-course-prior-recommendation-item')?.textContent)
       .toContain('Course from another creator')
+  })
+
+  // CICLO 11: textos, estados, ações e validações de recomendações em português.
+  // RN 8
+  it('Displays prior recommendation labels and optional status in Portuguese', async () => {
+    setLanguage('pt-BR')
+    const courseId = '123e4567-e89b-12d3-a456-426614174000'
+    const { container } = await mountNewCourseScreen({
+      courses: [{ id: courseId, title: 'Curso de exemplo' }],
+    })
+
+    expect(container.querySelector('#new-course-prior-recommendations')?.closest('.new-course-field')?.textContent)
+      .toContain('Recomendações prévias')
+    expect((container.querySelector('#new-course-prior-recommendations') as HTMLInputElement).placeholder)
+      .toBe('Digite o ID do curso da recomendação prévia')
+    expect(container.querySelector('#new-course-add-prior-recommendation')?.textContent).toBe('Adicionar')
+    expect(container.querySelector('#new-course-prior-recommendation-mandatory')?.parentElement?.textContent)
+      .toContain('Obrigatório')
+
+    const priorRecommendationInput = container.querySelector('#new-course-prior-recommendations') as HTMLInputElement
+    priorRecommendationInput.value = courseId
+    container.querySelector<HTMLButtonElement>('#new-course-add-prior-recommendation')?.click()
+
+    const recommendationItem = container.querySelector('.new-course-prior-recommendation-item')
+    expect(recommendationItem?.textContent).toContain('Curso de exemplo')
+    expect(recommendationItem?.textContent).toContain('Opcional')
+  })
+
+  // RN 4, 5, 6, 7, 8: título alternativo e ação de remoção em português.
+  it('Displays the Portuguese fallback title and remove action', async () => {
+    setLanguage('pt-BR')
+    const courseId = '123e4567-e89b-12d3-a456-426614174000'
+    const { container } = await mountNewCourseScreen({
+      courses: [],
+      formDraft: { priorRecommendations: [{ courseId, mandatory: false }] },
+    })
+
+    const recommendationItem = container.querySelector('.new-course-prior-recommendation-item')
+    const removeButton = recommendationItem?.querySelector<HTMLButtonElement>('.new-course-prior-recommendation-remove')
+
+    expect(recommendationItem?.textContent).toContain('Curso')
+    expect(recommendationItem?.textContent).toContain(`(${courseId.slice(0, 7)}...)`)
+    expect(removeButton?.getAttribute('aria-label')).toBe('Remover')
+
+    removeButton?.click()
+    expect(container.querySelectorAll('.new-course-prior-recommendation-item')).toHaveLength(0)
+    expect(JSON.parse(sessionStorage.getItem('educado.courses.formDraft') ?? '{}').priorRecommendations).toEqual([])
+  })
+
+  // RN 8, 9.1, 9.2, 9.3: mensagens de validação em português.
+  it('Displays all prior recommendation validation errors in Portuguese', async () => {
+    setLanguage('pt-BR')
+    const availableCourses = Array.from({ length: 6 }, (_, index) => ({
+      id: `123e4567-e89b-12d3-a456-42661417400${index + 1}`,
+      title: `Curso ${index + 1}`,
+    }))
+    const { container, mocks } = await mountNewCourseScreen({
+      courses: availableCourses,
+      formDraft: { priorRecommendations: [] },
+    })
+    const priorRecommendationInput = container.querySelector<HTMLInputElement>('#new-course-prior-recommendations')!
+    const addButton = container.querySelector<HTMLButtonElement>('#new-course-add-prior-recommendation')!
+
+    priorRecommendationInput.value = 'id-invalido'
+    addButton.click()
+    expect(container.querySelector('.new-course-field-error')?.textContent).toContain('Formato de ID inválido')
+
+    priorRecommendationInput.value = '999e4567-e89b-12d3-a456-426614174000'
+    priorRecommendationInput.dispatchEvent(new Event('input', { bubbles: true }))
+    addButton.click()
+    expect(container.querySelector('.new-course-field-error')?.textContent).toContain('Curso não encontrado')
+
+    priorRecommendationInput.value = availableCourses[0].id
+    priorRecommendationInput.dispatchEvent(new Event('input', { bubbles: true }))
+    addButton.click()
+    priorRecommendationInput.value = availableCourses[0].id
+    addButton.click()
+    expect(container.querySelector('.new-course-field-error')?.textContent)
+      .toContain('Esta recomendação prévia já foi adicionada')
+
+    for (const course of availableCourses.slice(1, 5)) {
+      priorRecommendationInput.value = course.id
+      priorRecommendationInput.dispatchEvent(new Event('input', { bubbles: true }))
+      addButton.click()
+    }
+
+    priorRecommendationInput.value = availableCourses[5].id
+    priorRecommendationInput.dispatchEvent(new Event('input', { bubbles: true }))
+    addButton.click()
+    expect(mocks.toast).toHaveBeenCalledWith(
+      'Limite máximo de 5 recomendações prévias atingido',
+      'error',
+    )
   })
 
 });
