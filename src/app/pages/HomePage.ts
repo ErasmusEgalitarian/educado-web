@@ -966,6 +966,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     })
 
     renderRecommendations()
+    persistFormDraft()
   })
 
   const goBackToDashboard = () => {
@@ -989,6 +990,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
       category: categoryInput?.value ?? '',
       imageMediaId: imageInput?.value ?? '',
       selectedTagIds: selectedTags.map((tag) => tag.id),
+      priorRecommendations: selectedPriorRecommendations,
     }
 
     sessionStorage.setItem(COURSE_HOME_FORM_DRAFT_STORAGE_KEY, JSON.stringify(draft))

@@ -788,6 +788,9 @@ const translations: Record<Language, TranslationTree> = {
           tags: 'Tags',
           tagsPlaceholder: 'Digite e pressione Enter para adicionar tag',
         },
+        priorRecommendations: {
+        
+        },
         difficultyOptions: {
           beginner: 'Iniciante',
           intermediate: 'Intermediário',
@@ -2284,6 +2287,9 @@ const translations: Record<Language, TranslationTree> = {
           imageHint: 'File must be up to 10Mb',
           tags: 'Tags',
           tagsPlaceholder: 'Type and press Enter to add tag',
+        },
+        priorRecommendations: {
+          mandatory: 'Required',
         },
         difficultyOptions: {
           beginner: 'Beginner',
