@@ -200,4 +200,18 @@ describe('Course Prior Recommendations', () => {
     expect(recommendationItem?.textContent).toContain(`(${courseId.slice(0, 7)}...)`)
   })
 
+  // CICLO 7: remover uma recomendação selecionada e persistir a remoção.
+  it('Removes a prior recommendation and persists the change', async () => {
+    const courseId = '123e4567-e89b-12d3-a456-426614174000'
+    const { container } = await mountNewCourseScreen({
+      courses: [{ id: courseId, title: 'Example course' }],
+      formDraft: { priorRecommendations: [{ courseId, mandatory: false }] },
+    })
+
+    const recommendationItem = container.querySelector('.new-course-prior-recommendation-item')
+    recommendationItem?.querySelector<HTMLButtonElement>('.new-course-prior-recommendation-remove')?.click()
+
+    expect(container.querySelectorAll('.new-course-prior-recommendation-item')).toHaveLength(0)
+    expect(JSON.parse(sessionStorage.getItem('educado.courses.formDraft') ?? '{}').priorRecommendations).toEqual([])
+  })
 });
