@@ -74,4 +74,31 @@ describe('Course Prior Recommendations', () => {
     expect(listItems[0].textContent).not.toContain(validCourseId);
     expect(mandatoryCheckbox.checked).toBe(false);
   });
+
+  // CICLO 2: preservar a escolha de recomendação obrigatória.
+  it('Adds a valid mandatory prior recommendation and checks the saved draft', async () => {
+    const validCourseId = '123e4567-e89b-12d3-a456-426614174000';
+    const validCourseName = 'Curso Base de Algoritmos';
+    const { container } = await mountNewCourseScreen({
+      courses: [{ id: validCourseId, title: validCourseName }],
+      formDraft: { priorRecommendations: [] },
+    });
+
+    const priorRecommendationInput = container.querySelector<HTMLInputElement>('#new-course-prior-recommendations')!;
+    const mandatoryCheckbox = container.querySelector<HTMLInputElement>('#new-course-prior-recommendation-mandatory')!;
+    const addButton = container.querySelector<HTMLButtonElement>('#new-course-add-prior-recommendation')!;
+
+    priorRecommendationInput.value = validCourseId;
+    mandatoryCheckbox.checked = true;
+    addButton.click();
+    await flushPromises();
+
+    const recommendationItem = container.querySelector('.new-course-prior-recommendation-item');
+    expect(recommendationItem?.textContent).toContain(validCourseName);
+    expect(recommendationItem?.textContent).toContain(`(${validCourseId.slice(0, 7)}...)`);
+    expect(recommendationItem?.textContent).not.toContain(validCourseId);
+    expect(recommendationItem?.textContent).toContain('Required');
+    expect(JSON.parse(sessionStorage.getItem('educado.courses.formDraft') ?? '{}').priorRecommendations)
+      .toEqual([{ courseId: validCourseId, mandatory: true }]);
+  });
 });
