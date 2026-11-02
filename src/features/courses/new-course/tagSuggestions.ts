@@ -10,3 +10,7 @@ export function filterTagSuggestions(tags: Tag[], selectedIds: string[], query: 
     .filter((tag) => tag.name.toLowerCase().includes(normalized) || tag.slug.toLowerCase().includes(normalized))
     .slice(0, limit)
 }
+
+export function canAddTag(selected: readonly Tag[], max = 20): boolean {
+  return selected.length < max
+}
