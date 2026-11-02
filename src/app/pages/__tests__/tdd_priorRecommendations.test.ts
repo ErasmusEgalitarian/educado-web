@@ -97,7 +97,7 @@ describe('Course Prior Recommendations', () => {
     expect(mandatoryCheckbox.checked).toBe(false);
   });
 
-  // CICLO 2: checkbox com default = true e adição de uma recomendação obrigatória
+  // CICLO 2: Adição de uma recomendação obrigatória
   // RN 2, 3, 4, 5: adiciona curso pelo ID como obrigatório, exibe seus dados e salva a escolha.
   it('Adds a valid mandatory prior recommendation and checks the saved draft', async () => {
     const validCourseId = '123e4567-e89b-12d3-a456-426614174000';
