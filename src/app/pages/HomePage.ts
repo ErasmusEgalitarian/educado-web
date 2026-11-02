@@ -927,7 +927,8 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
 
   type AvailableCourse = { id: string; title: string }
 
-  const availableCourses = JSON.parse(sessionStorage.getItem('educado.courses.availableCourses') ?? '[]', ) as AvailableCourse[]
+  const cachedAvailableCourses = sessionStorage.getItem('educado.courses.availableCourses')
+  let availableCourses = cachedAvailableCourses ? JSON.parse(cachedAvailableCourses) as AvailableCourse[] : []
 
   let selectedPriorRecommendations: PriorRecommendation[] = formDraft?.priorRecommendations ?? []
 
@@ -968,6 +969,18 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
   }
 
   renderRecommendations()
+
+  if (!cachedAvailableCourses) {
+    void Promise.resolve(coursesApi.getCourses({ status: 'active' }))
+      .then((courses) => {
+        availableCourses = courses.map(({ id, title }) => ({ id, title }))
+        sessionStorage.setItem('educado.courses.availableCourses', JSON.stringify(availableCourses))
+        renderRecommendations()
+      })
+      .catch(() => {
+        toast(t('courses.home.feedback.loadError'), 'error')
+      })
+  }
 
   addButton?.addEventListener('click', () => {
     const courseId = priorRecommendationInput?.value.trim()
