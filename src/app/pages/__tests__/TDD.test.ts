@@ -1,8 +1,29 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
-import { flushPromises, mountNewCourseScreen, resetHomePageTestState } from '@/test-utils/homePage'
+import { flushPromises, homePageMocks,  mountNewCourseScreen, resetHomePageTestState } from '@/test-utils/homePage'
 import { getLanguage, setLanguage } from '@/shared/i18n'
+import type { Course } from '@/features/courses/model/course.types'
+
 
 const initialLanguage = getLanguage()
+
+function makeCourse(id: string, title: string): Course {
+  return {
+    id,
+    ownerId: 'owner-1',
+    title,
+    shortDescription: title,
+    description: title,
+    imageMediaId: 'image-1',
+    difficulty: 'beginner',
+    estimatedTime: '8 hours',
+    passingThreshold: 70,
+    category: 'Tests',
+    tags: [],
+    isActive: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  }
+}
 
 //____________________________________________________________________________
 //MOCKS
@@ -251,5 +272,50 @@ describe('Course Prior Recommendations', () => {
       'error',
     );
   });
+
+  // CICLO 9: incluir recomendações selecionadas no payload de criação.
+  it('Sends prior recommendations in the course creation payload', async () => {
+    const validCourseId = '123e4567-e89b-12d3-a456-426614174000'
+    const { container, mocks } = await mountNewCourseScreen({
+      courses: [{ id: validCourseId, title: 'Curso de exemplo' }]
+    })
+    const createdCourse: Course = {
+      id: 'course-created',
+      ownerId: 'owner-1',
+      title: 'Curso de teste',
+      shortDescription: 'Descrição válida para teste',
+      description: 'Descrição válida para o curso de teste',
+      imageMediaId: validCourseId,
+      difficulty: 'beginner',
+      estimatedTime: '8 horas',
+      passingThreshold: 70,
+      category: 'Testes',
+      tags: [],
+      isActive: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      priorRecommendations: [{ courseId: validCourseId, mandatory: true }],
+    }
+    mocks.coursesApi.createCourse.mockResolvedValue(createdCourse)
+    mocks.coursesApi.deactivateCourse.mockResolvedValue(createdCourse)
+
+    const priorRecommendationInput = container.querySelector('#new-course-prior-recommendations') as HTMLInputElement
+    priorRecommendationInput.value = validCourseId
+    container.querySelector<HTMLInputElement>('#new-course-prior-recommendation-mandatory')!.checked = true
+    container.querySelector<HTMLButtonElement>('#new-course-add-prior-recommendation')?.click()
+
+    ;(container.querySelector('#new-course-title') as HTMLInputElement).value = 'Curso de teste'
+    ;(container.querySelector('#new-course-description') as HTMLTextAreaElement).value = 'Descrição válida para o curso de teste'
+    ;(container.querySelector('#new-course-category') as HTMLInputElement).value = 'Testes'
+    ;(container.querySelector('#new-course-image') as HTMLInputElement).value = validCourseId
+    container.querySelector<HTMLButtonElement>('#new-course-save-draft')?.click()
+    await flushPromises()
+
+    expect(mocks.coursesApi.createCourse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        priorRecommendations: [{ courseId: validCourseId, mandatory: true }],
+      }),
+    )
+  })
 
 });
