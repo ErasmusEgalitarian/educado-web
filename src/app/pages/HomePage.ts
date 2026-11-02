@@ -951,7 +951,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
       return ` 
         <div class="new-course-prior-recommendation-item">
           <span>${escapeHtml(title)} (${escapeHtml(recommendation.courseId.slice(0, 7))}...) - ${status}</span>
-          <button type="button" class="new-course-prior-recommendation-remove" data-index="${index}" aria-label="${t('common.removeItem')}">×</button>
+          <button type="button" class="new-course-prior-recommendation-remove" data-index="${index}" aria-label="${nt('priorRecommendations.remove')}">×</button>
         </div>
       `
     }).join('')
