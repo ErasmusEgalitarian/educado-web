@@ -318,4 +318,21 @@ describe('Course Prior Recommendations', () => {
     )
   })
 
+  // Ciclo 10
+  it('Loads courses from any creator for a regular user', async () => {
+    const courseId = '123e4567-e89b-12d3-a456-426614174000'
+    homePageMocks.coursesApi.getCourses.mockResolvedValue([
+      { ...makeCourse(courseId, 'Course from another creator'), ownerId: 'another-owner' },
+    ])
+
+    const { container, mocks } = await mountNewCourseScreen()
+
+    expect(mocks.coursesApi.getCourses).toHaveBeenCalledWith({ status: 'active' })
+    const recommendationInput = container.querySelector<HTMLInputElement>('#new-course-prior-recommendations')!
+    recommendationInput.value = courseId
+    container.querySelector<HTMLButtonElement>('#new-course-add-prior-recommendation')?.click()
+    expect(container.querySelector('.new-course-prior-recommendation-item')?.textContent)
+      .toContain('Course from another creator')
+  })
+
 });
