@@ -168,4 +168,23 @@ describe('Course Prior Recommendations', () => {
     expect(container.querySelector('.new-course-field-error')?.textContent).toContain('Course not found');
   });
 
+  // CICLO 5: impedir a inclusão do mesmo curso mais de uma vez.
+  it('Rejects a duplicate prior recommendation', async () => {
+    const courseId = '123e4567-e89b-12d3-a456-426614174000'
+    const { container } = await mountNewCourseScreen({
+      courses: [{ id: courseId, title: 'Example course' }],
+    })
+    const recommendationInput = container.querySelector<HTMLInputElement>('#new-course-prior-recommendations')!
+    const addButton = container.querySelector<HTMLButtonElement>('#new-course-add-prior-recommendation')!
+
+    recommendationInput.value = courseId
+    addButton.click()
+    recommendationInput.value = courseId
+    addButton.click()
+
+    expect(container.querySelectorAll('.new-course-prior-recommendation-item')).toHaveLength(1)
+    expect(container.querySelector('.new-course-field-error')?.textContent)
+      .toContain('This course has already been added as a prior recommendation')
+  })
+
 });
