@@ -4,6 +4,7 @@ import { sectionsApi } from '@/features/courses/api/sections.api'
 import { activitiesApi } from '@/features/courses/api/activities.api'
 import type { Activity, ActivityType, Course, CreateCourseInput, Section, Tag } from '@/features/courses/model/course.types'
 import { tagsApi } from '@/features/courses/api/tags.api'
+import { canAddTag, filterTagSuggestions } from '@/features/courses/new-course/tagSuggestions'
 import { mediaApi, type MediaResponse } from '@/features/media/api/media.api'
 import { uploadManager, type UploadJob } from '@/features/media/services/upload-manager'
 import { ApiError } from '@/shared/api/http'
@@ -1102,11 +1103,11 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
       return
     }
 
-    const suggestions = availableTags
-      .filter((tag) => tag.isActive)
-      .filter((tag) => !isSelectedTag(tag.id))
-      .filter((tag) => !normalized || tag.name.toLowerCase().includes(normalized) || tag.slug.toLowerCase().includes(normalized))
-      .slice(0, 8)
+    const suggestions = filterTagSuggestions(
+      availableTags,
+      selectedTags.map((tag) => tag.id),
+      query,
+    )
 
     if (suggestions.length === 0) {
       setSuggestionsVisible(false)
@@ -1125,7 +1126,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
         if (!tagId) return
         const tag = availableTags.find((item) => item.id === tagId)
         if (!tag) return
-        if (selectedTags.length >= 20) {
+        if (!canAddTag(selectedTags)) {
           toast(nt('errors.tagsLimit'), 'error')
           return
         }
