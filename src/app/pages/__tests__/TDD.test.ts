@@ -101,4 +101,52 @@ describe('Course Prior Recommendations', () => {
     expect(JSON.parse(sessionStorage.getItem('educado.courses.formDraft') ?? '{}').priorRecommendations)
       .toEqual([{ courseId: validCourseId, mandatory: true }]);
   });
+
+  // CICLO 3: rejeitar um ID que não segue o formato esperado.
+  it('Marks the field invalid and shows an error for an invalid ID format', async () => {
+    const { container } = await mountNewCourseScreen({
+      courses: [],
+      formDraft: { priorRecommendations: [] }
+    });
+
+    const priorRecommendationInput = container.querySelector('#new-course-prior-recommendations') as HTMLInputElement;
+    const addButton = container.querySelector('#new-course-add-prior-recommendation') as HTMLButtonElement;
+    expect(priorRecommendationInput).not.toBeNull();
+
+    const invalidCourseId = 'abc123';
+    
+    priorRecommendationInput.value = invalidCourseId;
+    priorRecommendationInput.dispatchEvent(new Event('input', { bubbles: true }));
+    priorRecommendationInput.dispatchEvent(new Event('blur', { bubbles: true }));
+
+    addButton.click();
+    await flushPromises();
+
+    // O campo deve conter a classe de erro de validação
+    expect(priorRecommendationInput.classList.contains('is-invalid')).toBe(true);
+
+    const fieldError = container.querySelector('.new-course-field-error');
+    expect(fieldError).not.toBeNull();
+  });
+
+  it('Clears the invalid state when the recommendation ID is corrected', async () => {
+    const validCourseId = '123e4567-e89b-12d3-a456-426614174000'
+    const { container } = await mountNewCourseScreen({
+      courses: [{ id: validCourseId, title: 'Example course' }],
+    })
+    const recommendationInput = container.querySelector<HTMLInputElement>('#new-course-prior-recommendations')!
+    const addButton = container.querySelector<HTMLButtonElement>('#new-course-add-prior-recommendation')!
+
+    recommendationInput.value = 'invalid-id'
+    addButton.click()
+    expect(recommendationInput.classList.contains('is-invalid')).toBe(true)
+    expect(container.querySelector('.new-course-field-error')).not.toBeNull()
+
+    recommendationInput.value = validCourseId
+    recommendationInput.dispatchEvent(new Event('input', { bubbles: true }))
+
+    expect(recommendationInput.classList.contains('is-invalid')).toBe(false)
+    expect(container.querySelector('.new-course-field-error')).toBeNull()
+  })
+
 });
