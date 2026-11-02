@@ -1389,6 +1389,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
         tags: [],
         tagIds,
         rating: null,
+        priorRecommendations: selectedPriorRecommendations,
       }
 
       const upsertedCourse = draftCourse?.id
