@@ -187,4 +187,17 @@ describe('Course Prior Recommendations', () => {
       .toContain('This course has already been added as a prior recommendation')
   })
 
+  // CICLO 6: renderizar recomendação salva quando o curso não está carregado.
+  it('Uses a fallback title when the recommended course is unavailable', async () => {
+    const courseId = '123e4567-e89b-12d3-a456-426614174000'
+    const { container } = await mountNewCourseScreen({
+      courses: [],
+      formDraft: { priorRecommendations: [{ courseId, mandatory: false }] },
+    })
+
+    const recommendationItem = container.querySelector('.new-course-prior-recommendation-item')
+    expect(recommendationItem?.textContent).toContain('Course')
+    expect(recommendationItem?.textContent).toContain(`(${courseId.slice(0, 7)}...)`)
+  })
+
 });
