@@ -969,6 +969,11 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
       return
     }
 
+    if (selectedPriorRecommendations.some((recommendation) => recommendation.courseId === courseId)) {
+      setFieldError(priorRecommendationInput, nt('priorRecommendations.errors.duplicate'))
+      return
+    }
+
     selectedPriorRecommendations.push({
       courseId,
       mandatory: mandatoryCheckbox?.checked ?? false,

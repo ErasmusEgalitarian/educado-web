@@ -2292,6 +2292,7 @@ const translations: Record<Language, TranslationTree> = {
           mandatory: 'Required',
           errors: {
             courseNotFound: 'Course not found',
+            duplicate: 'This course has already been added as a prior recommendation',
           },
         },
         difficultyOptions: {
