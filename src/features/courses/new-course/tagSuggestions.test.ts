@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Tag } from '@/features/courses/model/course.types'
-import { filterTagSuggestions } from './tagSuggestions'
+import { canAddTag, filterTagSuggestions } from './tagSuggestions'
 
 const makeTag = (id: string, name: string, slug = name.toLowerCase(), isActive = true): Tag => ({
   id,
@@ -65,5 +65,26 @@ describe('filterTagSuggestions', () => {
   it('preserva a ordem original', () => {
     const list = [makeTag('b', 'Beta app'), makeTag('a', 'Alfa app'), makeTag('c', 'Gama app')]
     expect(filterTagSuggestions(list, [], 'app').map((t) => t.id)).toEqual(['b', 'a', 'c'])
+  })
+})
+
+describe('canAddTag', () => {
+  const selected = (n: number) => Array.from({ length: n }, (_, i) => makeTag(String(i), `Tag ${i}`))
+
+  it('permite adicionar com 0 selecionadas', () => {
+    expect(canAddTag(selected(0))).toBe(true)
+  })
+
+  it('permite adicionar com 19 selecionadas', () => {
+    expect(canAddTag(selected(19))).toBe(true)
+  })
+
+  it('bloqueia com 20 selecionadas (valor limite)', () => {
+    expect(canAddTag(selected(20))).toBe(false)
+  })
+
+  it('respeita max customizado', () => {
+    expect(canAddTag(selected(2), 3)).toBe(true)
+    expect(canAddTag(selected(3), 3)).toBe(false)
   })
 })
