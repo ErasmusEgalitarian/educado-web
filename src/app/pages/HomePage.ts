@@ -989,6 +989,11 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
       return
     }
 
+    if (selectedPriorRecommendations.length >= 5) {
+      toast(nt('priorRecommendations.errors.limit'), 'error')
+      return
+    }
+
     selectedPriorRecommendations.push({
       courseId,
       mandatory: mandatoryCheckbox?.checked ?? false,
