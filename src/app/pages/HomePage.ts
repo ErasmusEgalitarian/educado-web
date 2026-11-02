@@ -2,7 +2,7 @@ import { getAccessToken, getCurrentUser } from '@/shared/api/auth-session'
 import { coursesApi } from '@/features/courses/api/courses.api'
 import { sectionsApi } from '@/features/courses/api/sections.api'
 import { activitiesApi } from '@/features/courses/api/activities.api'
-import type { Activity, ActivityType, Course, CreateCourseInput, Section, Tag } from '@/features/courses/model/course.types'
+import type { Activity, ActivityType, Course, CreateCourseInput, PriorRecommendation, Section, Tag } from '@/features/courses/model/course.types'
 import { tagsApi } from '@/features/courses/api/tags.api'
 import { mediaApi, type MediaResponse } from '@/features/media/api/media.api'
 import { uploadManager, type UploadJob } from '@/features/media/services/upload-manager'
@@ -774,6 +774,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     category: string
     imageMediaId: string
     selectedTagIds: string[]
+    priorRecommendations?: PriorRecommendation[]
   }
 
   container.innerHTML = `
@@ -865,6 +866,22 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
                 </div>
                 <div id="new-course-tags-suggestions" class="new-course-tags-suggestions" hidden></div>
               </label>
+
+              <label class="new-course-field">
+                <span>${nt('priorRecommendations.title')}</span>
+                <div class="new-course-tags-input" id="new-course-prior-recommendations-input">
+                  <div id="new-course-prior-recommendations-chips" class="new-course-tags-chips" hidden></div>
+                  <div style="display: flex; gap: 12px; align-items: center; width: 100%; margin-top: 4px;">
+                    <input id="new-course-prior-recommendations" type="text" placeholder="${nt('priorRecommendations.placeholder')}" style="flex: 1; border: none; background: transparent; padding: 4px 2px; font-size: 16px;">
+                    <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; margin-bottom: 0;">
+                      <input id="new-course-prior-recommendation-mandatory" type="checkbox" style="width: 16px; height: 16px; accent-color: #35a1b1;">
+                      <span>${nt('priorRecommendations.mandatory')}</span>
+                    </label>
+                    <button id="new-course-add-prior-recommendation" class="new-course-outline-btn" type="button" style="padding: 6px 14px; font-size: 14px;">${nt('priorRecommendations.add')}</button>
+                  </div>
+                </div>
+              </label>
+
             </form>
           </div>
 
@@ -907,6 +924,49 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
   const rawFormDraft = sessionStorage.getItem(COURSE_HOME_FORM_DRAFT_STORAGE_KEY)
   const formDraft = rawFormDraft ? (JSON.parse(rawFormDraft) as NewCourseFormDraft | null) : null
   let cancelModalOpen = false
+
+  type AvailableCourse = { id: string; title: string }
+
+  const availableCourses = JSON.parse(sessionStorage.getItem('educado.courses.availableCourses') ?? '[]', ) as AvailableCourse[]
+
+  let selectedPriorRecommendations: PriorRecommendation[] = formDraft?.priorRecommendations ?? []
+
+  const priorRecommendationInput = document.getElementById('new-course-prior-recommendations') as HTMLInputElement | null
+  const mandatoryCheckbox = document.getElementById('new-course-prior-recommendation-mandatory') as HTMLInputElement | null
+  const addButton = document.getElementById('new-course-add-prior-recommendation') as HTMLButtonElement | null
+  const chipsContainer = document.getElementById('new-course-prior-recommendations-chips')
+
+  const renderRecommendations = () => {
+    if (!chipsContainer) return
+
+    chipsContainer.hidden = selectedPriorRecommendations.length === 0
+    chipsContainer.innerHTML = selectedPriorRecommendations.map((recommendation) => {
+      const course = availableCourses.find(({ id }) => id === recommendation.courseId)
+      const title = course?.title ?? nt('priorRecommendations.courseFallback')
+      const status = recommendation.mandatory
+        ? nt('priorRecommendations.mandatory')
+        : nt('priorRecommendations.optional')
+
+      return ` 
+        <div class="new-course-prior-recommendation-item"> ${escapeHtml(title)} (${escapeHtml(recommendation.courseId.slice(0, 7))}...) - ${status}
+        </div>
+      `
+    }).join('')
+  }
+
+  addButton?.addEventListener('click', () => {
+    const courseId = priorRecommendationInput?.value.trim()
+    const course = availableCourses.find(({ id }) => id === courseId)
+
+    if (!courseId || !course) return
+
+    selectedPriorRecommendations.push({
+      courseId,
+      mandatory: mandatoryCheckbox?.checked ?? false,
+    })
+
+    renderRecommendations()
+  })
 
   const goBackToDashboard = () => {
     if (isEditMode) {
