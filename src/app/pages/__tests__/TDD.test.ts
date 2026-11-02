@@ -214,4 +214,42 @@ describe('Course Prior Recommendations', () => {
     expect(container.querySelectorAll('.new-course-prior-recommendation-item')).toHaveLength(0)
     expect(JSON.parse(sessionStorage.getItem('educado.courses.formDraft') ?? '{}').priorRecommendations).toEqual([])
   })
+
+  // CICLO 8: permitir cinco recomendações e bloquear a sexta.
+  it('Prevents adding more than five prior recommendations', async () => {
+    const availableCourses = [
+      { id: '123e4567-e89b-12d3-a456-426614174001', title: 'Curso 1' },
+      { id: '123e4567-e89b-12d3-a456-426614174002', title: 'Curso 2' },
+      { id: '123e4567-e89b-12d3-a456-426614174003', title: 'Curso 3' },
+      { id: '123e4567-e89b-12d3-a456-426614174004', title: 'Curso 4' },
+      { id: '123e4567-e89b-12d3-a456-426614174005', title: 'Curso 5' },
+      { id: '123e4567-e89b-12d3-a456-426614174006', title: 'Curso 6' },
+    ];
+    const { container, mocks } = await mountNewCourseScreen({
+      courses: availableCourses,
+      formDraft: { priorRecommendations: [] },
+    });
+
+    const priorRecommendationInput = container.querySelector<HTMLInputElement>('#new-course-prior-recommendations')!;
+    const addButton = container.querySelector<HTMLButtonElement>('#new-course-add-prior-recommendation')!;
+
+    for (let i = 1; i <= 5; i++) {
+      priorRecommendationInput.value = `123e4567-e89b-12d3-a456-42661417400${i}`;
+      addButton.click();
+      await flushPromises();
+    }
+
+    expect(container.querySelectorAll('.new-course-prior-recommendation-item')).toHaveLength(5);
+
+    priorRecommendationInput.value = '123e4567-e89b-12d3-a456-426614174006';
+    addButton.click();
+    await flushPromises();
+
+    expect(container.querySelectorAll('.new-course-prior-recommendation-item')).toHaveLength(5);
+    expect(mocks.toast).toHaveBeenCalledWith(
+      'Maximum of 5 prior recommendations reached',
+      'error',
+    );
+  });
+
 });
