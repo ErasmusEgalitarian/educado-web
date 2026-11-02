@@ -149,4 +149,23 @@ describe('Course Prior Recommendations', () => {
     expect(container.querySelector('.new-course-field-error')).toBeNull()
   })
 
+  // CICLO 4: rejeitar um ID bem formado que não identifica curso disponível.
+  it('Shows an error when the course ID does not exist', async () => {
+    const { container } = await mountNewCourseScreen({
+      courses: [],
+      formDraft: { priorRecommendations: [] }
+    });
+
+    const priorRecommendationInput = container.querySelector<HTMLInputElement>('#new-course-prior-recommendations')!;
+    const addButton = container.querySelector<HTMLButtonElement>('#new-course-add-prior-recommendation')!;
+    const nonExistentCourseId = '999e4567-e89b-12d3-a456-426614174000';
+
+    priorRecommendationInput.value = nonExistentCourseId;
+    addButton.click();
+    await flushPromises();
+
+    expect(container.querySelectorAll('.new-course-prior-recommendation-item')).toHaveLength(0);
+    expect(container.querySelector('.new-course-field-error')?.textContent).toContain('Course not found');
+  });
+
 });
