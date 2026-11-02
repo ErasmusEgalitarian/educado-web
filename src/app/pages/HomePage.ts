@@ -954,6 +954,8 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
     }).join('')
   }
 
+  renderRecommendations()
+
   addButton?.addEventListener('click', () => {
     const courseId = priorRecommendationInput?.value.trim()
     if (!courseId) return
