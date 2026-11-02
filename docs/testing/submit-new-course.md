@@ -87,7 +87,9 @@ retornado e o rascunho do formulário no `sessionStorage`; `clearLocalDrafts` e
 | nenhum dos dois | `createCourse` com valores padrão |
 
 Quando `editCourse` e `draftCourseId` coexistem, a edição tem prioridade, como no
-comportamento anterior.
+comportamento anterior. O `draftCourseId` é normalizado com `trim()`: string
+vazia ou formada somente por espaços é tratada como ausência de rascunho e leva
+a `createCourse`.
 
 ### Resultado
 
@@ -156,6 +158,8 @@ Também é verificada a falha da desativação após a persistência do curso.
 Após os cenários funcionais, foram adicionados casos para os branches de:
 
 - `draftCourseId` vazio tratado como ausência de rascunho;
+- `draftCourseId` formado somente por espaços tratado como ausência de
+  rascunho;
 - edição com tempo estimado vazio e avaliação ausente, que recebem os valores
   padrão;
 - nota de corte `0` preservada na edição;
@@ -165,21 +169,30 @@ Após os cenários funcionais, foram adicionados casos para os branches de:
 Para o classificador de mídia, são cobertos todos os códigos reconhecidos, um
 código desconhecido, um `ApiError` sem código e um erro comum.
 
+### TDD
+
+O tratamento do `draftCourseId` formado somente por espaços foi desenvolvido
+com TDD, depois da extração do módulo:
+
+- **Red (`6806fb0`):** teste com `draftCourseId: '   '` esperando
+  `operation: 'create'`. Falhou porque a string com espaços era considerada um
+  identificador existente e acionava `updateCourse`.
+- **Green (`78a7a62`):** `request.draftCourseId?.trim() || null` passou a
+  tratar o valor como ausência de rascunho.
+
+Não houve etapa de refatoração, pois a correção mínima já ficou delimitada. Os
+demais testes são retrospectivos: o código correspondente já existia antes
+deles.
+
 ## Evidências atuais
 
 Na validação desta alteração:
 
-- 5 arquivos de teste foram executados e 41 testes foram aprovados;
-- `submitNewCourse.ts` atingiu 100% em statements, functions e lines e 95% em
-  branches;
-- `media-reference-error.ts`, `newCourseForm.ts` e `media-id.ts` atingiram 100%
-  em todas as métricas;
+- 5 arquivos de teste foram executados e 42 testes foram aprovados, 18 deles em
+  `submitNewCourse.test.ts`;
+- `submitNewCourse.ts`, `media-reference-error.ts`, `newCourseForm.ts` e
+  `media-id.ts` atingiram 100% em statements, branches, functions e lines;
 - a verificação do TypeScript e o build foram aprovados.
-
-O único branch apontado como não coberto em `submitNewCourse.ts` é o caminho
-implícito do `if (mode === 'draft')`. Ele é exercitado pelos testes dos modos
-`next` e `review`, que alcançam as linhas seguintes; a marcação decorre da forma
-como o V8 contabiliza blocos contendo `await`.
 
 ## Limites
 
