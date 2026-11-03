@@ -788,6 +788,21 @@ const translations: Record<Language, TranslationTree> = {
           tags: 'Tags',
           tagsPlaceholder: 'Digite e pressione Enter para adicionar tag',
         },
+        priorRecommendations: {
+          title: 'Recomendações prévias',
+          placeholder: 'Digite o ID do curso da recomendação prévia',
+          mandatory: 'Obrigatório',
+          optional: 'Opcional',
+          add: 'Adicionar',
+          remove: 'Remover',
+          courseFallback: 'Curso',
+          errors: {
+            limit: 'Limite máximo de 5 recomendações prévias atingido',
+            invalidId: 'Formato de ID inválido',
+            courseNotFound: 'Curso não encontrado',
+            duplicate: 'Esta recomendação prévia já foi adicionada',
+          },
+        },
         difficultyOptions: {
           beginner: 'Iniciante',
           intermediate: 'Intermediário',
@@ -2284,6 +2299,21 @@ const translations: Record<Language, TranslationTree> = {
           imageHint: 'File must be up to 10Mb',
           tags: 'Tags',
           tagsPlaceholder: 'Type and press Enter to add tag',
+        },
+        priorRecommendations: {
+          title: 'Prior recommendations',
+          placeholder: 'Enter the course ID for the prior recommendation',
+          mandatory: 'Required',
+          optional: 'Optional',
+          add: 'Add',
+          remove: 'Remove',
+          courseFallback: 'Course',
+          errors: {
+            limit: 'Maximum of 5 prior recommendations reached',
+            invalidId: 'Invalid ID format',
+            courseNotFound: 'Course not found',
+            duplicate: 'This course has already been added as a prior recommendation',
+          },
         },
         difficultyOptions: {
           beginner: 'Beginner',
