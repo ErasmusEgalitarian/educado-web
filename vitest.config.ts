@@ -10,8 +10,9 @@ export default mergeConfig(
       include: ['src/**/*.test.ts'],
       coverage: {
         provider: 'v8',
+        include: ['src/**/*.ts'],
+        exclude: ['src/**/*.test.ts', 'src/setupTests.ts', 'src/test-utils/**'],
         reporter: ['text', 'html', 'json-summary'],
-        skipFull: false,
       },
     },
   })

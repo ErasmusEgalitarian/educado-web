@@ -279,6 +279,14 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
                 <option value="name">${t('courses.home.sortOptions.nameAsc')}</option>
               </select>
             </label>
+
+            <label class="creator-select-wrap" for="creator-course-status">
+              <select id="creator-course-status">
+                <option value="all">${t('courses.home.statusOptions.all')}</option>
+                <option value="published">${t('courses.home.statusOptions.published')}</option>
+                <option value="draft">${t('courses.home.statusOptions.draft')}</option>
+              </select>
+            </label>
           </div>
         </div>
 
@@ -335,13 +343,15 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
   const listViewButton = document.getElementById('creator-list-view') as HTMLButtonElement | null
   const searchInput = document.getElementById('creator-course-search') as HTMLInputElement | null
   const sortSelect = document.getElementById('creator-course-sort') as HTMLSelectElement | null
+  const statusSelect = document.getElementById('creator-course-status') as HTMLSelectElement | null
   const coursesList = document.getElementById('creator-courses-list')
 
-  if (!coursesList || !gridViewButton || !listViewButton || !searchInput || !sortSelect) return
+  if (!coursesList || !gridViewButton || !listViewButton || !searchInput || !sortSelect || !statusSelect) return
 
   let courses: Course[] = []
   let query = ''
   let sort: CourseSort = 'recent'
+  let status: 'all' | 'published' | 'draft' = 'all'
   let viewMode: 'grid' | 'list' = 'grid'
 
   const updateSidebarStats = (items: Course[]) => {
@@ -367,6 +377,12 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
 
   const getSortedAndFilteredCourses = () => {
     let filtered = [...courses]
+
+    if (status === 'published') {
+      filtered = filtered.filter((course) => course.publishedAt != null)
+    } else if (status === 'draft') {
+      filtered = filtered.filter((course) => course.publishedAt == null)
+    }
 
     if (query) {
       filtered = filtered.filter((course) => {
@@ -702,6 +718,11 @@ function renderCreatorHomePage(container: HTMLElement, role: HomeUserRole) {
 
   sortSelect.addEventListener('change', (event) => {
     sort = (event.target as HTMLSelectElement).value as CourseSort
+    renderCourses()
+  })
+
+  statusSelect.addEventListener('change', (event) => {
+    status = (event.target as HTMLSelectElement).value as 'all' | 'published' | 'draft'
     renderCourses()
   })
 
