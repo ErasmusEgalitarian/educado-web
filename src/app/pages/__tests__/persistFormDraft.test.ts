@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { makeTag, mountNewCourseScreen, resetHomePageTestState } from '@/test-utils/homePage'
 
-import { buildFormDraft } from '../HomePage'
-
 vi.mock('@/shared/api/auth-session')
 vi.mock('@/features/courses/api/courses.api')
 vi.mock('@/features/courses/api/sections.api')
@@ -251,58 +249,4 @@ describe('persistFormDraft (caixa-branca)', () => {
   })
 
   it.todo('CT16 [CB] D1,D2,D3,D4,D5 = V - elemento ausente do DOM (inalcancavel pela tela)')
-})
-
-
-// TDD - Fase de Extração
-describe('TDD: buildFormDraft (Função Extraída)', () => {
-
-
-    it('deve aplicar o valor padrão "beginner" se a dificuldade for uma string vazia (Correção CT10)', () => {
-    // 1.Passamos o ofensor do CT10: difficulty como string vazia ''
-    const fields = {
-      title: 'Teste Defeito',
-      description: 'Testando string vazia',
-      difficulty: '', 
-      category: 'Categoria',
-      imageMediaId: 'img-1'
-    }
-    
-    // 2. Chamamos a função extraída
-    const draft = buildFormDraft(fields, [])
-
-    // 3. Verificamos se ela se protegeu e aplicou 'beginner'
-    expect(draft.difficulty).toBe('beginner')
-  })
-
-
-  it('deve montar o objeto de rascunho corretamente com os parâmetros fornecidos', () => {
-    // 1. Preparamos entradas puras, sem depender de DOM
-    const fields = {
-      title: 'Curso de TDD',
-      description: 'Aprendendo a extrair funções',
-      difficulty: 'advanced',
-      category: 'Programação',
-      imageMediaId: 'img-999'
-    }
-    
-    // Simulamos a lista de tags que a função original usava
-    const selectedTags = [
-      { id: 'tag-1', name: 'React', isActive: true, slug: 'react' }, 
-      { id: 'tag-2', name: 'Testes', isActive: true, slug: 'testes' }
-    ]
-
-    // 2. Chamamos a nova função que AINDA NÃO EXISTE
-    const result = buildFormDraft(fields, selectedTags)
-
-    // 3. Verificamos se ela retorna exatamente o formato esperado pelo sessionStorage
-    expect(result).toEqual({
-      title: 'Curso de TDD',
-      description: 'Aprendendo a extrair funções',
-      difficulty: 'advanced',
-      category: 'Programação',
-      imageMediaId: 'img-999',
-      selectedTagIds: ['tag-1', 'tag-2']
-    })
-  })
 })

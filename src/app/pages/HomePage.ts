@@ -18,6 +18,7 @@ import type {
   NewCourseSubmitStorage,
   NewCourseValidationErrorCode,
 } from '@/features/courses/new-course/newCourse.types'
+import { buildFormDraft } from '@/features/courses/new-course/formDraft'
 import { submitNewCourse } from '@/features/courses/new-course/submitNewCourse'
 import { tagsApi } from '@/features/courses/api/tags.api'
 import { canAddTag, filterTagSuggestions } from '@/features/courses/new-course/tagSuggestions'
@@ -42,23 +43,6 @@ type MediaErrorContext = 'course' | 'exercise'
 
 let homePageAbortController: AbortController | null = null
 let homePageCleanupCallbacks: Array<() => void> = []
-
-
-
-// Nova função (TDD Green fase)
-  export const buildFormDraft = (fields: any, selectedTags: any[]) => {
-  return {
-    title: fields.title ?? '',
-    description: fields.description ?? '',
-     // change ?? to || to deny undef,null AND empty string (Green)
-    difficulty: fields.difficulty || 'beginner',
-    category: fields.category ?? '',
-    imageMediaId: fields.imageMediaId ?? '',
-    selectedTagIds: selectedTags.map((tag) => tag.id),
-  }
-}
-
-
 
 function ensureHomePageAbortController() {
   if (!homePageAbortController || homePageAbortController.signal.aborted) {
