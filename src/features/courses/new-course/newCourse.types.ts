@@ -2,6 +2,7 @@ import type {
   Course,
   CourseDifficulty,
   CreateCourseInput,
+  PriorRecommendation,
   UpdateCourseInput,
 } from '@/features/courses/model/course.types'
 import type { MediaReferenceErrorCode } from '@/features/media/model/media-reference-error'
@@ -27,6 +28,7 @@ export interface NewCourseFormInput {
   category: string
   imageMediaId: string
   tagIds: readonly string[]
+  priorRecommendations?: readonly PriorRecommendation[]
 }
 
 export interface NormalizedNewCourseForm {
@@ -36,6 +38,7 @@ export interface NormalizedNewCourseForm {
   category: string
   imageMediaId: string
   tagIds: string[]
+  priorRecommendations?: PriorRecommendation[]
 }
 
 export interface NewCourseValidationError {
@@ -48,8 +51,9 @@ export interface NewCourseValidationResult {
   errors: NewCourseValidationError[]
 }
 
-export type NewCourseFormDraft = Omit<NewCourseFormInput, 'tagIds'> & {
+export type NewCourseFormDraft = Omit<NewCourseFormInput, 'tagIds' | 'priorRecommendations'> & {
   selectedTagIds: string[]
+  priorRecommendations?: PriorRecommendation[]
 }
 
 export type BuildCoursePayloadOptions = Partial<

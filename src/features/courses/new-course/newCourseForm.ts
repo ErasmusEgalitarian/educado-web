@@ -21,6 +21,9 @@ export function normalizeNewCourseForm(input: NewCourseFormInput): NormalizedNew
     category: input.category.trim(),
     imageMediaId: input.imageMediaId.trim(),
     tagIds: [...input.tagIds],
+    ...(input.priorRecommendations
+      ? { priorRecommendations: input.priorRecommendations.map((item) => ({ ...item })) }
+      : {}),
   }
 }
 
@@ -73,5 +76,6 @@ export function buildCreateCoursePayload(
     tags: [],
     tagIds: [...input.tagIds],
     rating: options.rating ?? null,
+    ...(input.priorRecommendations ? { priorRecommendations: [...input.priorRecommendations] } : {}),
   }
 }
