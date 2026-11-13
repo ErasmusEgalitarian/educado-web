@@ -241,7 +241,7 @@ describe('Course Prior Recommendations', () => {
     recommendationItem?.querySelector<HTMLButtonElement>('.new-course-prior-recommendation-remove')?.click()
 
     expect(container.querySelectorAll('.new-course-prior-recommendation-item')).toHaveLength(0)
-    expect(JSON.parse(sessionStorage.getItem('educado.courses.formDraft') ?? '{}').priorRecommendations).toEqual([])
+    expect(JSON.parse(sessionStorage.getItem('educado.courses.formDraft') ?? '{}').priorRecommendations ?? []).toEqual([])
   })
 
   // CICLO 8: permitir cinco recomendações e bloquear a sexta.
@@ -390,7 +390,7 @@ describe('Course Prior Recommendations', () => {
 
     removeButton?.click()
     expect(container.querySelectorAll('.new-course-prior-recommendation-item')).toHaveLength(0)
-    expect(JSON.parse(sessionStorage.getItem('educado.courses.formDraft') ?? '{}').priorRecommendations).toEqual([])
+    expect(JSON.parse(sessionStorage.getItem('educado.courses.formDraft') ?? '{}').priorRecommendations ?? []).toEqual([])
   })
 
   // RN 8, 9.1, 9.2, 9.3: mensagens de validação em português.

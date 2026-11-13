@@ -89,6 +89,10 @@ export type MountedScreen = {
 
 async function mountView(view: 'create' | 'sections' | 'review', opts: MountOptions): Promise<MountedScreen> {
   homePageMocks.tagsApi.getTags.mockResolvedValue(opts.tags ?? [])
+  // Lista de cursos para recomendacoes previas: default vazio, a menos que o teste ja tenha configurado.
+  if (!homePageMocks.coursesApi.getCourses.getMockImplementation()) {
+    homePageMocks.coursesApi.getCourses.mockResolvedValue([])
+  }
 
   sessionStorage.setItem(VIEW_KEY, view)
   if (opts.formDraft) sessionStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(opts.formDraft))
@@ -126,4 +130,5 @@ export function resetHomePageTestState() {
   sessionStorage.clear()
   localStorage.clear()
   vi.clearAllMocks()
+  homePageMocks.coursesApi.getCourses.mockReset()
 }
