@@ -20,6 +20,7 @@ import type {
 } from '@/features/courses/new-course/newCourse.types'
 import { submitNewCourse } from '@/features/courses/new-course/submitNewCourse'
 import { tagsApi } from '@/features/courses/api/tags.api'
+import { canAddTag, filterTagSuggestions } from '@/features/courses/new-course/tagSuggestions'
 import { mediaApi, type MediaResponse } from '@/features/media/api/media.api'
 import { isValidMediaIdFormat } from '@/features/media/model/media-id'
 import { classifyMediaReferenceError, type MediaReferenceErrorCode } from '@/features/media/model/media-reference-error'
@@ -1136,11 +1137,11 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
       return
     }
 
-    const suggestions = availableTags
-      .filter((tag) => tag.isActive)
-      .filter((tag) => !isSelectedTag(tag.id))
-      .filter((tag) => !normalized || tag.name.toLowerCase().includes(normalized) || tag.slug.toLowerCase().includes(normalized))
-      .slice(0, 8)
+    const suggestions = filterTagSuggestions(
+      availableTags,
+      selectedTags.map((tag) => tag.id),
+      query,
+    )
 
     if (suggestions.length === 0) {
       setSuggestionsVisible(false)
@@ -1159,7 +1160,7 @@ function renderNewCourseScreen(container: HTMLElement, role: HomeUserRole, editC
         if (!tagId) return
         const tag = availableTags.find((item) => item.id === tagId)
         if (!tag) return
-        if (selectedTags.length >= 20) {
+        if (!canAddTag(selectedTags)) {
           toast(nt('errors.tagsLimit'), 'error')
           return
         }
